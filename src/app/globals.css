@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ── Design Tokens ──────────────────────────────────────────────────────────
+   Tailwind v4: @theme injects these as :root CSS vars AND generates utilities.
+   No tailwind.config.ts needed — this IS the config.
+   ───────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Colors — generates bg-*, text-*, border-* utilities */
+  --color-bg:            #0a0a0a;                  /* bg-bg           page background */
+  --color-surface:       #141414;                  /* bg-surface      card background */
+  --color-border:        #262626;                  /* border-border   dividers        */
+  --color-primary:       #ffffff;                  /* text-primary    main text       */
+  --color-secondary:     #a3a3a3;                  /* text-secondary  subdued text    */
+  --color-muted:         #808080;                  /* text-muted      footer/hints (AA 4.5+ on #0a0a0a) */
+  --color-accent:        #6366f1;                  /* bg/text/border-accent           */
+  --color-accent-subtle: rgba(99, 102, 241, 0.1);  /* bg-accent-subtle badge bg      */
+
+  /* Font Families — generates font-* utilities */
+  --font-heading: 'Geist', sans-serif;
+  --font-body:    'Geist', sans-serif;
+  --font-code:    'Geist Mono', monospace;
+
+  /* Font Sizes — generates text-* utilities
+     xs → 2xl intentionally omitted: Tailwind defaults match the design exactly.
+     v4 convention: each --text-* MUST have a --text-*--line-height companion.
+     Without it, text-subtitle etc. would only set font-size, not line-height. */
+  --text-subtitle: 2.625rem;              /* 42px  role / subtitle line  */
+  --text-subtitle--line-height: 1.2;
+  --text-section: 3rem;                   /* 48px  section headings      */
+  --text-section--line-height: 1;
+  --text-display: 4rem;                   /* 64px  contact heading       */
+  --text-display--line-height: 1;
+  --text-hero: 7.5rem;                    /* 120px hero name             */
+  --text-hero--line-height: 1;
+
+  /* Border Radius — generates rounded-* utilities
+     v4 convention: rem units (matches theme.css --radius-* definitions)   */
+  --radius-xs: 0.125rem;  /* 2px   rounded-xs  bullet dots      */
+  --radius-sm: 0.25rem;   /* 4px   rounded-sm  badge tags       */
+  --radius-md: 0.5rem;    /* 8px   rounded-md  buttons, inputs  */
+  --radius-lg: 0.625rem;  /* 10px  rounded-lg  image holder     */
+  --radius-xl: 0.75rem;   /* 12px  rounded-xl  project cards    */
+
+  /* Spacing — generates p-*, m-*, gap-*, w-*, h-* etc.
+     Semantic names avoid colliding with Tailwind's numeric scale (p-4, gap-6…) */
+  --spacing-tag:     0.5rem;   /*  8px  gap-tag      badge / tag gap          */
+  --spacing-inner:   0.75rem;  /* 12px  gap-inner    tight component gap       */
+  --spacing-element: 1rem;     /* 16px  gap-element  between sibling elements  */
+  --spacing-group:   1.5rem;   /* 24px  gap-group    grouped component gap      */
+  --spacing-card:    2rem;     /* 32px  p-card       card internal padding      */
+  --spacing-nav:     2.5rem;   /* 40px  gap-nav      nav link spacing           */
+  --spacing-section: 4rem;     /* 64px  gap-section  between page sections      */
+  --spacing-block:   5rem;     /* 80px  p-block      large block padding        */
+  --spacing-layout:  7.5rem;   /* 120px px-layout    page horizontal padding    */
+  --spacing-canvas:  10rem;    /* 160px py-canvas    section vertical padding   */
 }
 
+/* ── Next.js Font Loader ────────────────────────────────────────────────────
+   Must be @theme inline because these are external :root vars injected by
+   Next.js at the <html> element, not static values we control.
+   ───────────────────────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans:   var(--font-geist-sans);
+  --font-mono:   var(--font-geist-mono);
+  --font-korean: var(--font-noto-sans-kr);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ── Layout Container ───────────────────────────────────────────────────────
+   Header·Footer·모든 섹션이 공유하는 공통 컨테이너.
+   모바일 우선: 기본 px-4, md(768) px-6, lg(1024) px-8. max-w로 중앙 정렬.
+   기존 px-layout(고정 120px) 자리를 이 유틸리티로 통일한다. */
+@utility container-page {
+  @apply mx-auto w-full max-w-7xl px-4 md:px-6 lg:px-8;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* 앵커 점프 시 sticky 헤더(h-20 = 5rem)에 섹션 제목이 가리지 않도록.
+   값은 Header 높이와 동일한 --spacing-block(5rem) 토큰 사용. */
+section[id] {
+  scroll-margin-top: var(--spacing-block);
+}
+
+/* 모션 최소화 선호 사용자는 부드러운 스크롤 비활성화 */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
 }
 
+/* 키보드 포커스 시에만 보이는 포커스 링(마우스 클릭 시엔 표시 안 함).
+   색은 accent 토큰 사용(하드코딩 없음). 요소의 기존 radius를 따라 모서리도 둥글게 그려진다. */
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-primary);
+  font-family: var(--font-body);
 }
