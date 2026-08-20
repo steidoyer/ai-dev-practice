@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# project-local (개인 리뷰·질문 로그 — 공유 안 함)
+docs/CODE_REVIEW_LOG.md

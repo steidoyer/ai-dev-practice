@@ -104,3 +104,9 @@ body {
   color: var(--color-primary);
   font-family: var(--font-body);
 }
+
+@utility text-accent-color {
+  color: color-mix(in srgb,
+  var(--color-primary),
+  var(--color-accent) calc(var(--mix) * 100%));
+}
