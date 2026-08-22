@@ -2,7 +2,8 @@
 
 Claude Code가 세션 시작 시 자동으로 읽는 파일. 규칙과 영구 컨텍스트만 담는다.
 (진행 로그·의사결정·프롬프트는 `docs/PROJECT_PLAYBOOK.md`, clone 이후 직접 코딩 계획·AI 멘토 규칙은 `docs/NEXT_ROADMAP.md`,
-기술 사용법 가이드는 `docs/FRAMER_MOTION_GUIDE.md`·`docs/TYPESCRIPT_GUIDE.md`·`docs/NEXTJS_GUIDE.md`, 개념 Q&A는 `docs/DEV_QNA.md`, 접근성은 `docs/A11Y_CHECKLIST.md` 참고.)
+3단계 새 섹션 기획 확정안은 `docs/SECTION_APPROACH_PLAN.md`·`docs/SECTION_JOURNEY_PLAN.md`·`docs/SECTION_SERVICES_PLAN.md`, 스크롤 병합 인터랙션 구현 참고 자료는 `docs/SCROLL_MERGE_GUIDE.md`, 코드 리뷰·질문 로그는 `docs/CODE_REVIEW_LOG.md`, git 브랜치·커밋·rebase 워크플로우는 `docs/GIT_WORKFLOW.md`,
+기술 사용법 가이드는 `docs/FRAMER_MOTION_GUIDE.md`·`docs/TYPESCRIPT_GUIDE.md`·`docs/NEXTJS_GUIDE.md`·`docs/TAILWIND_REFERENCE.md`·`docs/CSS_ADVANCED.md`, 개념 Q&A는 `docs/DEV_QNA.md`, 접근성은 `docs/A11Y_CHECKLIST.md` 참고.)
 
 ## 개발 프로세스
 두 가지 개발 방식을 **같은 저장소에서** 이어간다. AI 제안이라도 반드시 개발자 확인 후 반영(자동 승인 없음).
@@ -13,11 +14,12 @@ Claude Code가 세션 시작 시 자동으로 읽는 파일. 규칙과 영구 �
   정답 코드나 직접 수정 지시는 하지 않는다. **개발자가 직접 코딩하는 단계(주로 새 폴더 clone 이후)에 들어가면
   이 규칙을 따를 것.** (상세: `docs/NEXT_ROADMAP.md`)
 - **`ai-only` 태그**: AI가 단독 개발한 마지막 시점을 git 태그 `ai-only`로 표시. 이후 커밋이 사람이 직접 코딩한 부분.
+- **말투**: 개발자와의 대화는 **한국어 높임말(존댓말)**로 한다. 반말 금지. (문서·로그 본문은 기존 문어체 유지 — 이 규칙은 대화 응답에 적용.)
 
 ## 개요
 - **목적: AI 도구(Claude Code + Figma MCP + Claude 앱) 활용 개발을 연습·공부하는 프로젝트.** 저장소명 `ai-dev-practice`.
 - 만드는 페이지는 "개발자 포트폴리오 1페이지 랜딩"이지만, 실제 포트폴리오 용도가 아니라 **AI 개발 연습의 소재**다.
-- 섹션 순서: Hero → Projects → Skills → CTA(연락처). 스타일: 다크 모던 / 미니멀, 인터랙션 포함.
+- 섹션 순서(현재): Hero → Approach → Projects → Skills → CTA(연락처). *직접 손코딩으로 Approach 추가됨. Journey·Services는 기획 완료·구현 대기 → 목표 순서: Hero → Approach → Journey → Projects → Skills → Services → CTA.* 스타일: 다크 모던 / 미니멀, 인터랙션 포함.
 - 브랜드명 `DEV STUDIO`, 도메인/이메일 `example.dev`는 **플레이스홀더**(실명·실주소 아님).
 - 계획/대화는 Claude 앱, 코드 작성은 Claude Code, 디자인은 Figma(MCP 연결).
 

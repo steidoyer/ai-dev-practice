@@ -80,6 +80,9 @@ export default function Skills() {
           </FadeIn>
         ))}
       </div>
+      <div>
+        <span>연습 텍스트</span>
+      </div>
     </section>
   )
 }

@@ -10,6 +10,8 @@
 
 다음 단계부터 AI는 **리뷰어이자 멘토**로만 동작한다.
 
+> **말투**: 멘토 대화는 **한국어 높임말(존댓말)**로 한다(반말 금지). 문서·로그 본문은 문어체 유지. (CLAUDE.md에도 규칙화됨.)
+
 **하는 것**
 - 지금 내가 **무슨 작업을 해야 하는지**(할 일 목록/범위) 알려준다.
 - 내가 막힌 부분을 물으면 **개념을 설명**하고, 그 내용을 담은 **문서를 만들어** 준다.
@@ -47,7 +49,7 @@ GitHub에 올린 뒤 baseline 시점에 **`ai-only` 태그**로 스냅샷을 찍
 두 로컬 폴더는 **같은 하나의 GitHub 저장소**를 바라보는 서로 다른 작업 디렉터리일 뿐이다(별도 repo·fork 관계 아님).
 
 **할 일**
-- [ ] 현재 프로젝트를 GitHub 원격 저장소(`ai-dev-practice`)로 push. *(작성 시점 기준 아직 커밋/원격 없음 — 전부 uncommitted)*
+- [ ] 현재 프로젝트를 GitHub 원격 저장소(`ai-dev-practice`)로 push. *(업데이트: 로컬 커밋이 생성됨 — 원격 push·`ai-only` 태그·클론 상태는 개발자 확인.)*
 - [ ] baseline 시점에 `ai-only` 태그를 찍어 원본 상태 스냅샷 보존.
 - [ ] 내 컴퓨터의 **다른 경로에 새 폴더를 만들어** 그 원격을 `git clone` → 이 새 로컬 폴더에서 직접 코딩(지금 폴더는 baseline으로 보존, 손대지 않음).
 
@@ -75,9 +77,16 @@ GitHub에 올린 뒤 baseline 시점에 **`ai-only` 태그**로 스냅샷을 찍
 
 ---
 
-## 3단계. 새 섹션 2개 제작 (핵심 — 직접 손코딩)
+## 3단계. 새 섹션 제작 (핵심 — 직접 손코딩) — 진행 중
 
-이 프로젝트에서 실력 향상의 **메인 목표**. 두 개 정도의 새 섹션을 처음부터 직접 작성.
+이 프로젝트에서 실력 향상의 **메인 목표**. **3개 섹션**(Approach·Journey·Services)을 처음부터 직접 작성한다. (원래 "2개"에서 확장.)
+
+**진행 상태**
+- **Approach** — 마크업·스타일 완료, **인터랙션 단계 진행 중**(스크롤 병합 벤: `useScroll`/`useTransform`, sticky+tall, latched 한 방향, `background-clip` 색 와이프). 기획: `SECTION_APPROACH_PLAN.md`.
+- **Journey** — 기획 완료(스크롤 선 그리기 `pathLength` + 노드 강조 + 색 와이프 + hover + 선 머리 발광), 구현 대기. 기획: `SECTION_JOURNEY_PLAN.md`.
+- **Services** — 기획 완료(카드 펼치기 `AnimatePresence`+`layout` + hover/tap + 스태거), 구현 대기. 기획: `SECTION_SERVICES_PLAN.md`.
+- 전체 순서: **Hero → Approach → Journey → Projects → Skills → Services → CTA**.
+- 진행·결정·리뷰 로그: `PROJECT_PLAYBOOK.md` §10, `CODE_REVIEW_LOG.md`.
 
 **할 일 (내가 주도)**
 - [ ] 추가할 섹션 2개의 **목적/콘텐츠/레이아웃** 기획.
@@ -91,7 +100,8 @@ GitHub에 올린 뒤 baseline 시점에 **`ai-only` 태그**로 스냅샷을 찍
 - 완료 후: "리뷰해줘" → 우려 지점·놓친 관점 지적(고친 코드 제공 X).
 
 > 참고: 반응형 규칙·기준은 `CLAUDE.md`, 접근성 기준은 `A11Y_CHECKLIST.md`, 애니메이션 적용 방식(래퍼 vs 직접)은 `DEV_QNA.md` Q11.
-> 기술별 사용법 가이드(직접 코딩용): framer-motion → `FRAMER_MOTION_GUIDE.md`, TypeScript → `TYPESCRIPT_GUIDE.md`, Next.js(App Router) → `NEXTJS_GUIDE.md`.
+> 기술별 사용법 가이드(직접 코딩용): framer-motion → `FRAMER_MOTION_GUIDE.md`(§3.1 선언형 vs 값 구동), TypeScript → `TYPESCRIPT_GUIDE.md`, Next.js(App Router) → `NEXTJS_GUIDE.md`.
+> 이 단계에서 늘어난 참고: 스크롤 병합·sticky → `SCROLL_MERGE_GUIDE.md`, CSS 고급(색 와이프·position 등) → `CSS_ADVANCED.md`, Rules of Hooks → `DEV_QNA.md` Q15, 코드 리뷰·질문 → `CODE_REVIEW_LOG.md`.
 
 ---
 
@@ -145,7 +155,10 @@ GitHub에 올린 뒤 baseline 시점에 **`ai-only` 태그**로 스냅샷을 찍
 ## 기존 참고 문서 (clone한 작업본에도 함께 딸려옴)
 
 - `CLAUDE.md` — 규칙/컨벤션/스택
-- `docs/PROJECT_PLAYBOOK.md` — 지금까지의 진행/결정 로그
-- `docs/DEV_QNA.md` — 개념 Q&A(Tailwind 파이프라인, RSC, 메타데이터/OG 등)
+- `docs/PROJECT_PLAYBOOK.md` — 지금까지의 진행/결정 로그(직접 손코딩 로그 = §10)
+- `docs/DEV_QNA.md` — 개념 Q&A(Tailwind 파이프라인, RSC, 메타데이터/OG, Q15 Rules of Hooks 등)
 - `docs/A11Y_CHECKLIST.md` — 접근성 기준
 - `docs/PERFORMANCE_NOTES.md` — 성능 제안 체크리스트
+- **기획(새 섹션)**: `docs/SECTION_APPROACH_PLAN.md` · `docs/SECTION_JOURNEY_PLAN.md` · `docs/SECTION_SERVICES_PLAN.md`
+- **구현 참고**: `docs/FRAMER_MOTION_GUIDE.md` · `docs/SCROLL_MERGE_GUIDE.md` · `docs/CSS_ADVANCED.md` · `docs/TYPESCRIPT_GUIDE.md` · `docs/NEXTJS_GUIDE.md` · `docs/TAILWIND_REFERENCE.md`
+- **리뷰·기록**: `docs/CODE_REVIEW_LOG.md` · `docs/STICKY_SESSION_NOTE.md`(임시 대화록)

@@ -1,6 +1,7 @@
 'use client'
 
-import { motion, useReducedMotion, type Variants } from 'framer-motion'
+import { useReducedMotionSafe } from '@/hooks/useReducedMotionSafe'
+import { motion, type Variants } from 'framer-motion'
 
 // 컨테이너: 자식들을 순차(stagger) 등장시킨다. 자신은 시각 변화 없음.
 const container: Variants = {
@@ -22,16 +23,24 @@ const itemArrow: Variants = {
   show: { opacity: 0.9, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
 }
 
+const itemReduced: Variants = {
+  hidden: {},
+  show: {
+    opacity: 1,
+    transition: { duration: 0, },
+  }
+}
+
 export default function Hero() {
-  const prefersReducedMotion = useReducedMotion()
+  const reduce = useReducedMotionSafe() 
 
   // 모션 최소화 선호 시: stagger/이동 없이 즉시 최종 상태로.
-  const containerVariants = prefersReducedMotion ? undefined : container
-  const itemVariants = prefersReducedMotion ? undefined : item
-  const arrowVariants = prefersReducedMotion ? undefined : itemArrow
+  const containerVariants = reduce ? itemReduced : container
+  const itemVariants = reduce ? itemReduced : item
+  const arrowVariants = reduce ? itemReduced : itemArrow
 
   // 화살표 반복 바운스. 모션 최소화 선호 시엔 정지.
-  const arrowBounce = prefersReducedMotion ? undefined : { y: [0, 8, 0] }
+  const arrowBounce = reduce ? undefined : { y: [0, 8, 0] }
 
   // 앵커 기본 점프 대신 부드러운 스크롤로 다음 섹션 이동.
   // JS scrollIntoView는 CSS의 prefers-reduced-motion을 자동 반영하지 않으므로
@@ -39,7 +48,7 @@ export default function Hero() {
   const handleScrollDown = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
     document.getElementById('projects')?.scrollIntoView({
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      behavior: reduce ? 'auto' : 'smooth',
     })
   }
 

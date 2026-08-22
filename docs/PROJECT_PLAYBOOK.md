@@ -26,7 +26,10 @@ Node.js v22+ · Next.js 16 (App Router) · Tailwind CSS v4 · framer-motion v12 
 - **섹션 id 네이밍**: Header 앵커 링크 기준으로 통일. `#skills`(Skills 탭), `#projects`(Work 탭), `#hero`, `#contact`(Contact 탭). 컴포넌트 파일명도 일치시킴(Tech.tsx → Skills.tsx).
 - **프로젝트 성격 재정의**: 실제 포트폴리오로 쓰려는 게 아니라 **AI 도구(Claude Code + Figma MCP) 활용 개발을 연습**하는 게 목적이고, 만드는 콘텐츠가 마침 포트폴리오 랜딩일 뿐. 저장소명 **`ai-dev-practice`**, README를 이 취지로 갱신.
 - **다음 챕터 = 직접 코딩 + AI 멘토 모드**: 개발 실력 향상을 위해 이후엔 개발자가 **직접 손코딩**하고, AI는 코드를 작성/수정하지 않는 **리뷰어·멘토** 역할만 한다(설명·유도·문서화, 직접 수정지시 X). 상세 계획: **docs/NEXT_ROADMAP.md**.
-- **저장소 전략**: repo 2개 대신 **1개 repo + 새 폴더에 `git clone`**으로 작업본 확보(원본 폴더는 baseline). 필요 시 현재 시점에 `ai-only` 태그. GitHub 업로드·커밋은 개발자가 직접 진행(작성 시점 기준 **아직 커밋/원격 없음** — 전부 uncommitted).
+- **저장소 전략**: repo 2개 대신 **1개 repo + 새 폴더에 `git clone`**으로 작업본 확보(원본 폴더는 baseline). 필요 시 현재 시점에 `ai-only` 태그. GitHub 업로드·커밋은 개발자가 직접 진행. *(업데이트: 로컬 커밋이 생성됨 — 원격 push·`ai-only` 태그·클론 상태는 개발자 확인.)*
+- **직접 손코딩 단계(3단계) 착수**: baseline 이후 개발자가 **직접 손코딩** 시작. 첫 대상 = **Approach 섹션**(마크업→스타일→인터랙션 순, 현재 **인터랙션 단계**). AI는 엄격 멘토 모드(설명·문서화·질문만, 코드 작성/수정 X). 진행·결정 상세: **§10**.
+- **대화 말투 = 한국어 높임말(존댓말)**: 멘토 대화는 높임말(반말 금지), 문서·로그 본문은 문어체 유지. → CLAUDE.md "말투" 규칙 추가.
+- **새 섹션 3개로 확장**: 원래 "새 섹션 2개"에서 → **Approach(진행 중) + Journey + Services**. 전체 순서: **Hero → Approach → Journey → Projects → Skills → Services → CTA**. 기획 문서: `SECTION_APPROACH_PLAN.md`·`SECTION_JOURNEY_PLAN.md`·`SECTION_SERVICES_PLAN.md`.
 
 ## 4. 로드맵 (진행 상황)
 
@@ -70,7 +73,9 @@ Node.js v22+ · Next.js 16 (App Router) · Tailwind CSS v4 · framer-motion v12 
   - [~] 성능 — 이 프로젝트엔 대부분 미적용(정적·소규모). 제안 체크리스트를 **docs/PERFORMANCE_NOTES.md**에 저장(다음 단계용).
 - [ ] 8. 배포 (Vercel)
 - [~] 9. 저장소 정리 & 공개 — 저장소명 `ai-dev-practice` 확정, README를 AI 연습 취지로 재작성. **GitHub 업로드(커밋/원격/push)는 개발자가 직접 진행 예정**(현재 미완).
-- [ ] 10. (다음 챕터) clone 후 직접 코딩 — 새 폴더 clone → 사전 정비(Tailwind 클래스명 등) → 새 섹션 2개 직접 제작 → 마무리 → OG 이미지 → 성능·배포. AI는 멘토 역할. **상세 로드맵: docs/NEXT_ROADMAP.md**
+- [~] 10. (다음 챕터) 직접 코딩 — **진행 중.** AI는 멘토 역할. **상세 로드맵: docs/NEXT_ROADMAP.md**, 진행 로그: **§10**.
+  - [~] 새 섹션 직접 제작 — **Approach** 인터랙션 단계 진행 중(스크롤 병합·sticky·latched·색 와이프). **Journey/Services** 기획 완료, 구현 대기.
+  - [ ] 사전 정비(Tailwind 클래스명 등) / 마무리 / OG 이미지 / 성능·배포 — 대기.
 
 ## 5. 진행 방식
 
@@ -90,6 +95,43 @@ Node.js v22+ · Next.js 16 (App Router) · Tailwind CSS v4 · framer-motion v12 
 - **2차(섹션별 구체화)**: 각 섹션 구성 요소를 `[Hero] 이름·한 줄 소개·스크롤 화살표` 식 **대괄호 라벨 + 항목**으로 지정.
 
 → 요령: 1차로 **전체 구조**를 잡고 2차로 **섹션별 요소를 라벨링**해 좁히면 의도가 정확히 반영된다.
+
+### 6.1 Figma MCP로 디자인을 만드는/읽는 메커니즘
+
+**이 프로젝트에서 Figma는 두 번, 방향이 반대로 쓰였다.**
+- **1단계(디자인 → 코드)**: 기획 전달 → Figma가 4섹션 페이지를 디자인 → **그 디자인에서 토큰을 추출해 코드로**(§7 "디자인 토큰 추출"). 즉 디자인이 먼저, `globals.css @theme` 토큰이 거기서 파생. → 그래서 코드 토큰 값 = Figma 디자인 값.
+- **2단계(코드값 → 디자인)**: 새 섹션 `approach`는 코드에 이미 토큰이 있는 상태 → "**기존 디자인/값 그대로** 새 섹션 시안을 만들어줘"로 지시.
+
+**⚠ 토큰에 대한 사실(`get_variable_defs`로 직접 확인 — 검증된 사실)**: 이 Figma 파일엔 **Figma Variables(디자인 토큰)가 하나도 없다** — 결과 `{}`. 색은 전부 **raw hex**(bg `#0A0A0A`, accent `#6366F1`)로 박혀 있음.
+- 즉 시안은 "토큰을 바인딩"한 게 아니라 **같은 값을 복제**해 시각적으로만 일치시킨 것.
+- **토큰 "시스템"은 코드(`@theme`)에만 존재**, Figma엔 값만 있음. 새 시안을 만들 땐 토큰 라이브러리 참조가 아니라 **기존 프레임의 fill·폰트 값을 읽어 그 숫자를 복제**한다.
+
+**Claude Code가 Figma에서 디자인을 "나오게" 하는 법** — Figma MCP 서버가 다리, 두 방향:
+
+| 방향 | 하는 일 | 도구 |
+|---|---|---|
+| **읽기**(Figma→Claude) | 기존 구조·색·폰트 이해 | `get_metadata`(구조 XML)·`get_screenshot`·`get_design_context`·`get_variable_defs` |
+| **쓰기**(Claude→Figma) | 파일 안에 노드 생성 | **`use_figma`** = Figma Plugin API JS를 파일 내부에서 실행 |
+
+- **핵심**: AI가 붓질하는 게 아니라, Claude가 만든 **JS 코드**(`figma.createFrame()`·`createText()`·`loadFontAsync()`·`setRangeFills()` …)를 Figma가 실행해 도형·텍스트 노드를 **프로그램적으로 찍는다**.
+- `generate_figma_design`은 "이미 렌더된 웹 화면을 스크린샷 기반 캡처"용 → 코드가 없는 **새 섹션엔 부적합**, `use_figma` 경로를 쓴다.
+- **점진적 진행 필수**: 골격 생성 → 스크린샷 확인 → 어긋나면 수정 → 반복. (`use_figma` 스킬 `figma-use` 필수 로드.)
+
+**approach 시안이 만들어진 추정 프로세스**
+
+> 아래 번호 단계는 **프롬프트 원문이 로그에 남아 있지 않아, 이후 추가 작업을 하면서 정리·복원한 것이다(추정).**
+> 위의 MCP 메커니즘·토큰 사실(`get_variable_defs`)은 실제 도구 호출로 **확인한 것**이라 성격이 다르다.
+
+1. **지시**: "이 파일에 approach 섹션 시안을 만들어줘. 기존 디자인 오른쪽에, **색·폰트·간격은 기존 값 그대로**. 구성 = `// APPROACH` + 카피 + 벤 다이어그램(기획·디자인·개발, 교집합 융합형)."
+2. **읽기**: `get_metadata`·`get_screenshot`으로 기존 프레임을 훑고 fill·폰트 값(`#6366F1`·`#0A0A0A`·Geist)을 학습.
+3. **쓰기**: `use_figma`로 Plugin API JS를 실행해 새 프레임을 그 값 그대로 생성.
+4. **검증**: `get_screenshot`으로 확인·수정.
+5. **코드로**: 완성 프레임을 **레퍼런스**로만 쓰고, 구현 때 `get_metadata`로 px 좌표를 뽑아 옮김. (`CODE_REVIEW_LOG.md` 2026-07-18의 560×560 좌표표가 그 산출물)
+
+→ **모바일 시안 제작이 같은 구조의 실제(검증된) 사례**다:
+
+`whoami`(접근 확인) → `get_metadata`(구조) → `get_screenshot`(시각) → `use_figma` read로 fill·폰트 값 inspect → `use_figma` write로 프레임 생성 → `get_screenshot` 검증 → 패치.
+→ 완성 프레임은 **레퍼런스**로만 쓰고, 코드 구현 때 `get_metadata`로 px 좌표를 뽑아 옮긴다. (모바일 시안 = `approach-mobile` node `74:2`, 스펙은 `SECTION_APPROACH_PLAN.md §4`)
 
 ## 7. Claude Code 프롬프트 모음 (대표 샘플 · 재사용/학습용)
 
@@ -122,8 +164,8 @@ Node.js v22+ · Next.js 16 (App Router) · Tailwind CSS v4 · framer-motion v12 
 - [x] Hero 텍스트 순차 등장 (stagger)
 - [x] 프로젝트 카드 hover 확대 — ProjectCard
 - [x] 스크롤 유도 화살표 반복 바운스 — Hero
-- [ ] 가벼운 sticky / 패럴럭스 (미착수, 필요 시 6단계 이후 검토)
-      → 컴포넌트별로 하나씩 붙인다. (이 단계 진입 시 세부 프롬프트 별도 작성)
+- [~] sticky / 스크롤 연동 — **직접 손코딩 단계(3단계)에서 착수.** Approach에서 `useScroll`+sticky+tall로 스크롤 병합 구현 중(§10). Journey에서 `pathLength` 선 그리기 예정.
+      → 컴포넌트별로 하나씩 붙인다.
 
 **적용 방식 결정**: 공통 등장 애니메이션은 재사용 래퍼(`src/components/motion/FadeIn.tsx` 등, 얇은 클라이언트 컴포넌트)를 기본으로 쓰고, Hero stagger처럼 1회성 특수 효과는 해당 컴포넌트에 직접 넣는 혼합 방식. 래퍼로 감싸면 섹션은 서버 컴포넌트로 유지됨(RSC children 전달 원리). 접근성은 `useReducedMotion`을 래퍼 한 곳에서 처리. (상세 비교·근거: docs/DEV_QNA.md Q11)
 
@@ -136,3 +178,33 @@ Node.js v22+ · Next.js 16 (App Router) · Tailwind CSS v4 · framer-motion v12 
 - [ ] 계획/결정은 이 파일에 기록 (대화에만 남기지 않기)
 - [ ] (Claude 앱을 함께 쓰는 경우) 이 프로젝트 대화는 Claude 앱의 Projects 기능으로 묶기
 - [ ] 대화 삭제 전 중요한 프롬프트는 복사 백업
+
+## 10. 직접 손코딩 단계(3단계) 진행 로그
+
+> baseline 이후 개발자가 **직접 손코딩**하는 단계의 진행·결정·산출을 모은다. (AI는 멘토: 설명·문서화·리뷰·질문만, 코드 작성 X.)
+> 코드 리뷰·질문 상세는 `docs/CODE_REVIEW_LOG.md`, 개념은 각 가이드 문서.
+
+### 10.1 상태
+- **Approach 섹션**: 마크업·스타일 완료 → **인터랙션 단계 진행 중**(스크롤 병합 벤 다이어그램).
+- **Journey / Services**: **기획 확정**(문서 완료), 구현 대기.
+- 전체 섹션 순서: **Hero → Approach → Journey → Projects → Skills → Services → CTA**.
+
+### 10.2 Approach 인터랙션 — 핵심 결정
+- **드라이버 = 스크롤(값 구동)**: `useScroll`(섹션 ref, `offset ["start start","end end"]`) + `useTransform`으로 진행도를 원 좌표/opacity에 매핑. 자동 재생 없음.
+- **스크롤 거리 확보 = sticky + tall**: 섹션을 `md:h-[...]`로 키우고 내부를 `md:sticky md:top-20`으로 고정(헤더 높이 `h-20` 밑). `useScroll` target은 tall 섹션(고정 요소 아님).
+- **진행은 한 방향(되감김 없음)**: `scrollYProgress`를 직접 쓰지 않고 **도달 최댓값만 기억하는 단조 증가(latched)** 진행도를 드라이버로. (→ `SECTION_APPROACH_PLAN.md` §3.2)
+- **한 속성 = 드라이버 하나**: 선언형(`whileInView`+`transition`)과 값 구동(`style` MotionValue)을 같은 속성에 겹치지 않는다. (→ `FRAMER_MOTION_GUIDE.md` §3.1)
+- **텍스트 라벨은 원의 형제(자식 X)**: 원의 transform을 상속하지 않아 "라벨은 안 움직이고 opacity만".
+- **"융합형" 하이라이트 = `background-clip: text` 색 와이프(왼→오)**: 단순 `color` 보간은 `var()` 파싱 실패로 툭 끊김 → 그래디언트를 글자에 clip하고 `--wipe` 위치만 스크롤로 이동. (→ `CSS_ADVANCED.md` §5)
+- **헤더 높이 오프셋**: `top-20`(리터럴) 유지, 전용 토큰(`--header-h`) 분리는 보류(YAGNI). (→ `CODE_REVIEW_LOG.md` 2026-07-29)
+- **Rules of Hooks**: 반복 훅 값은 최상위 고정 개수 호출 후 배열 인덱싱. (→ `DEV_QNA.md` Q15)
+
+### 10.3 Journey / Services 기획 요지
+- **Journey(타임라인)**: SVG `pathLength` 선 그리기 + 노드 등장 + 선끝 닿는 노드 강조 + 융합형 색 와이프 + 카드 hover + 선 머리 발광. sticky 불필요. (→ `SECTION_JOURNEY_PLAN.md`)
+- **Services(카드)**: 카드 펼치기(`AnimatePresence`+`layout`) + hover/tap(`whileHover`/`whileTap`) + 등장 스태거(`staggerChildren`). disclosure 접근성 세트. (→ `SECTION_SERVICES_PLAN.md`)
+
+### 10.4 이 단계의 문서군
+- **기획**: `SECTION_APPROACH_PLAN.md` · `SECTION_JOURNEY_PLAN.md` · `SECTION_SERVICES_PLAN.md`
+- **구현 참고**: `SCROLL_MERGE_GUIDE.md` · `CSS_ADVANCED.md`(§5 색 와이프 등) · `FRAMER_MOTION_GUIDE.md`(§3.1)
+- **리뷰·개념**: `CODE_REVIEW_LOG.md` · `DEV_QNA.md`(Q15)
+- **임시**: `STICKY_SESSION_NOTE.md`(대화록·병합 소스, 병합 후 삭제 가능)

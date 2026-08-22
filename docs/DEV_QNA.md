@@ -1266,3 +1266,113 @@ export default async function OGImage() {
 | 1페이지 포트폴리오 | 둘 다 무난 — 한글 넣으면 정적 PNG가 편함 |
 
 > 출처: [Next.js — Metadata & OG images](https://nextjs.org/docs/app/getting-started/metadata-and-og-images), [`opengraph-image` 파일 컨벤션](https://nextjs.org/docs/app/api-reference/file-conventions/metadata/opengraph-image), [`ImageResponse` (next/og)](https://nextjs.org/docs/app/api-reference/functions/image-response)
+
+---
+
+## Q15. Rules of Hooks — 왜 훅을 반복문·조건문 안에서 부르면 안 되나?
+
+> React 개념(Next 특화 아님). Approach 섹션 스크롤 병합 구현 중, 원마다 `useTransform`을 `.map()` 안에서 부르려다 막힌 데서 나온 질문.
+> 관련 리뷰: `CODE_REVIEW_LOG.md` 2026-07-26 항목(핵심 1번), framer-motion 훅: `FRAMER_MOTION_GUIDE.md` §3.
+
+### 두 가지 규칙
+
+React 공식 문서가 정한 훅 사용 규칙은 둘이다:
+
+1. **훅은 항상 최상위(top level)에서만 호출한다.** 반복문(`for`/`.map`)·조건문(`if`)·중첩 함수·`return` 이후(early return 뒤)에서 부르지 않는다.
+2. **훅은 React 함수 컴포넌트 또는 커스텀 훅 안에서만 호출한다.** 일반 JS 함수에서 부르지 않는다.
+
+여기서 문제되는 건 **규칙 1**이다.
+
+### 왜 그런가 — React는 훅을 "호출 순서"로 식별한다
+
+React는 각 훅 호출에 이름표를 붙이지 않는다. 대신 **컴포넌트가 렌더될 때마다 훅이 불리는 순서**로 각 훅과 그 내부 상태(state·memo·MotionValue 등)를 짝짓는다. 즉 "이 렌더의 1번째 훅 = 저 렌더의 1번째 훅"으로 위치를 기준 삼아 상태를 이어 붙인다.
+
+그래서 **매 렌더에서 훅의 개수와 순서가 항상 같아야** 짝이 안 어긋난다. 반복문·조건문 안에서 부르면 이 전제가 깨진다:
+
+```jsx
+// ❌ 규칙 위반 — map 길이가 바뀌면 훅 개수가 렌더마다 달라짐
+{circles.map((item) => {
+  const { x, y } = useTransform(scrollYProgress, [0, 1], item.circleTransform)
+  return <motion.div style={{ x, y }} />
+})}
+```
+
+`circles`가 3개면 훅 3개, 2개로 줄면 훅 2개 → React가 "3번째 훅"에 저장해둔 상태를 다음 렌더에서 찾지 못해 상태가 밀리거나 깨진다. 조건문도 마찬가지다:
+
+```jsx
+// ❌ 조건에 따라 훅을 건너뛰면 그 아래 훅들의 순서가 통째로 밀림
+if (isDesktop) {
+  const v = useSomething()
+}
+```
+
+### 우회법 — "훅은 밖에서 고정 개수로, 결과만 안에서 인덱싱"
+
+반복 대상마다 훅 값이 필요하면, **훅 호출 자체는 최상위에 고정 개수로 펼쳐 두고**, 그 결과를 배열에 모아 반복문 안에서는 **배열을 인덱싱만** 한다. 인덱싱·구조분해는 훅 호출이 아니므로 규칙에 안 걸린다.
+
+```jsx
+// ✅ 훅은 최상위에서 3번, 항상 같은 순서로 호출 (개수 고정)
+const circle1 = useTransform(scrollYProgress, [0, 1], { x: [-80, 0], y: [-80, 0] })
+const circle2 = useTransform(scrollYProgress, [0, 1], { x: [ 80, 0], y: [-80, 0] })
+const circle3 = useTransform(scrollYProgress, [0, 1], { x: [  0, 0], y: [ 80, 0] })
+const circleArray = [circle1, circle2, circle3]
+
+// map 안에서는 훅을 부르지 않고 결과만 꺼내 씀 (인덱싱 = 훅 아님 → 안전)
+{circles.map((item, index) => {
+  const { x, y } = circleArray[index]
+  return <motion.div style={{ x, y }} />
+})}
+```
+
+이 방식이 성립하는 조건은 **반복 개수가 고정(여기선 원 3개)**이라는 점이다. 개수가 런타임에 가변이면 이 패턴을 못 쓰고, 대신 "각 항목을 자체 컴포넌트로 분리해 그 컴포넌트 안에서 훅 1번씩" 부르는 구조로 바꾼다(컴포넌트 하나당 훅 개수는 고정이므로 규칙 충족).
+
+### 헷갈리는 경계 — 배열 리터럴 안 훅 호출은 되는데, `.map`은 왜 안 되나
+
+훅 결과를 배열/객체에 **담는 것 자체**는 규칙과 무관하다. 규칙이 보는 건 오직 **훅을 어디서 *호출*하느냐**다. 그래서 아래처럼 배열 리터럴 안에서 훅을 부르는 건 — 자주 위험해 보이지만 — **사실 규칙 위반이 아니다**:
+
+```jsx
+// ✅ (규칙상) 유효 — 손으로 쓴 3개 고정, 감싸는 조건/반복 없음
+const circles = [
+  { text: '기획',   data: useTransform(scrollYProgress, [0,1], { x:[-100,0], opacity:[0,1] }) }, // 1번째
+  { text: '디자인', data: useTransform(scrollYProgress, [0,1], { x:[ 100,0], opacity:[0,1] }) }, // 2번째
+  { text: '개발',   data: useTransform(scrollYProgress, [0,1], { y:[ 100,0], opacity:[0,1] }) }, // 3번째
+]
+```
+
+배열 리터럴은 컴포넌트 본문에서 **위에서 아래로 순서대로** 평가되므로, 훅이 **항상 3번, 항상 같은 순서**로 불린다. 배열 리터럴은 "반복문·조건·중첩 함수" 어디에도 해당하지 않아 **최상위(top level) 호출**로 친다. 그래서 규칙을 지킨다 — *우연히*가 아니라 실제로 유효하다.
+
+**그럼 무엇이 위험한가.** "지금 틀렸다"가 아니라 **깨지기 쉬운(fragile) 구조**라는 점이다. 데이터 배열처럼 생겨서, 다음 두 리팩터로 자연스럽게 유도되는데 그 순간 규칙이 깨진다:
+
+```jsx
+// ❌ (a) .map 으로 만들면 — 훅이 콜백(중첩 함수) 안으로 들어감 + 개수가 데이터 길이에 종속
+const circles = data.map((d) => ({ ...d, data: useTransform(scrollYProgress, [0,1], d.range) }))
+//                            ^^^ 이 화살표 함수 안에서의 훅 호출 = "중첩 함수" 위반
+//   게다가 data.length가 렌더마다 바뀌면 → "Rendered more/fewer hooks than during the previous render" 크래시
+
+// ❌ (b) 조건부로 항목을 넣으면 — 호출 개수·순서가 렌더마다 흔들림
+const circles = [
+  cond && { data: useTransform(...) }, // cond=false면 이 호출이 건너뛰어져 아래 슬롯이 밀림
+  { data: useTransform(...) },
+]
+```
+
+즉 **리터럴(고정 3개)은 유효, `.map`/조건부는 위반**이다. 경계가 헷갈리므로, 데이터처럼 보이는 자리에 훅을 섞기보다 위 §우회법대로 **데이터와 훅 결과를 분리**해 두는 편이 안전하다(리팩터해도 안 깨지고, "여기서 훅이 불린다"는 신호도 또렷해진다).
+
+### 강제 도구 — ESLint
+
+이 규칙은 눈으로 지키는 게 아니라 **`eslint-plugin-react-hooks`**가 정적으로 잡아준다. Next.js 기본 ESLint 설정에 포함돼 있어 `npm run lint`에서 위반이 걸린다.
+
+**단, 무엇을 잡고 무엇을 안 잡는지**는 위 경계와 같다:
+- 잡는다 → 훅을 **반복문·조건·중첩 함수(예: `.map` 콜백)·early return 이후**에서 호출할 때.
+- (대개) 안 잡는다 → **배열 리터럴 안 고정 호출**처럼 최상위 실행에 해당하는 경우. 구조상 반복/조건/중첩이 아니므로 규칙 위반이 아니라서다. → 그래서 "리터럴은 ESLint를 통과하지만 fragile"이라는 상황이 생긴다(통과했다고 안전한 리팩터가 보장되는 건 아님).
+
+### 요약
+
+- React는 훅을 **호출 순서**로 상태와 짝짓는다 → 매 렌더 훅 개수·순서가 같아야 한다.
+- 그래서 반복문·조건문·early return 뒤에서 훅을 부르면 순서가 흔들려 상태가 깨진다.
+- 규칙이 보는 건 훅을 **어디서 호출하느냐**지, 결과를 어디에 담느냐가 아니다 → 훅 결과를 배열/객체에 저장하는 건 자유.
+- 그래서 **고정 개수 배열 리터럴 안 호출은 유효**하지만, `.map`(중첩 콜백)·조건부로 바꾸면 위반이 된다 → 리터럴은 ESLint를 통과해도 fragile.
+- 반복마다 훅 값이 필요하면 **훅은 최상위에 고정 개수로 펼치고 결과 배열을 인덱싱**하거나, **항목을 컴포넌트로 분리**한다.
+- `eslint-plugin-react-hooks`(Next 기본 포함)가 반복/조건/중첩 안 호출을 잡아준다.
+
+> 출처: [React — Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks), [React — eslint-plugin-react-hooks](https://react.dev/reference/eslint-plugin-react-hooks)

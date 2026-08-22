@@ -168,6 +168,63 @@ import type { Metadata } from 'next'
 import type { IconType } from 'react-icons'
 ```
 
+### 3.9 함수 오버로드 (function overloads) — 라이브러리 타입 읽을 때 자주 만남
+
+**같은 함수를 여러 시그니처로 선언**해, **호출 형태에 따라 다른 파라미터·반환 타입**을 주는 것. 직접 쓸 일은 드물어도 **라이브러리 타입(예: framer-motion `useTransform`)을 읽을 때** 꼭 만난다.
+
+```ts
+// 구현부 위에 "오버로드 시그니처"를 여러 줄 나열
+function toArr(x: string): string[]
+function toArr(x: number): number[]
+function toArr(x: string | number) {   // 실제 구현(이 시그니처는 외부에 안 보임)
+  return [x]
+}
+toArr('a')  // string[]
+toArr(1)    // number[]
+```
+
+- **정의로 이동(F12)** 하면 그 함수의 **오버로드 목록**이 다 보인다 → 저문서화 API를 파악하는 핵심 기술.
+- 실물: `useTransform`은 오버로드가 **5개**다(범위 매핑, 변환 함수, 여러 값 결합, 계산형, 그리고 `outputMap` 형태). → `FRAMER_MOTION_GUIDE.md`, 정의는 `node_modules/framer-motion/dist/index.d.ts`.
+
+### 3.10 mapped types · indexed access — "키 유지, 값 타입만 변환" (+ 런타임 `mapValues`와의 관계)
+
+**mapped type**: 객체 타입의 **키를 그대로 돌면서 값 타입만 바꾸는** 타입. 문법은 `{ [K in keyof T]: ... }`.
+
+```ts
+type Wrap<T> = { [K in keyof T]: MotionValue<T[K]> }
+// { x: number; y: string }  →  { x: MotionValue<number>; y: MotionValue<string> }
+//   [K in keyof T] = 모든 키 K를 순회,  T[K] = 그 키의 값 타입(= indexed access type)
+```
+
+- `T[K]` = **인덱스 접근 타입**(그 키의 값 타입 꺼내기). `T[K][number]`면 "그 키가 배열일 때 원소 타입".
+- `T extends Record<string, any[]>` 처럼 **제네릭 제약**과 함께 쓴다(§3.5 `Record`, §3.6 제네릭).
+
+**런타임 `mapValues`와의 관계** — 둘은 "키 유지, 값 변환"이라는 **같은 발상을 다른 층에서** 한 것:
+
+| | `mapValues`(런타임) | mapped type(타입) |
+|---|---|---|
+| 언제 | 실행 중 | 컴파일 타임 |
+| 대상 | 실제 **값** | **타입** |
+| 예 | `{a:1}` → `{a:'1'}` | `{a:number}` → `{a:string}` |
+
+즉 **mapped type = "mapValues의 타입 버전"**. `mapValues`(값을 바꿈)의 반환 타입을 정확히 적으려면 mapped type이 필요하다.
+
+```ts
+// 런타임: 키는 그대로, 값만 fn으로 변환
+const mapValues = (obj, fn) =>
+  Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, fn(v)]))
+// 이 함수의 반환 타입을 정확히 = { [K in keyof T]: R }  ← mapped type
+```
+
+**실물 (이 프로젝트 Approach)**: `useTransform`의 `outputMap` 오버로드가 정확히 이 조합이다 —
+```ts
+useTransform(scrollYProgress, [0, 1], { x: [...], y: [...], opacity: [...] })
+// 런타임: 각 배열 → MotionValue (mapValues 같은 일)
+// 타입:  { [K in keyof T]: MotionValue<T[K][number]> }  (mapped type)
+// 결과:  { x: MotionValue<...>, y: MotionValue<...>, opacity: MotionValue<...> }
+```
+→ `style={결과}`로 통째로 넘겨 여러 속성을 한 번에 구동. (CSS 커스텀 속성 `--x`는 `style` 타입(`MotionStyle`=`CSSProperties` 기반)이 키를 몰라 `as` 단언이 필요 — §5.2.)
+
 ---
 
 ## 4. 실무 예시
@@ -261,5 +318,8 @@ TS는 이름이 아니라 **모양(구조)**으로 호환을 판단한다. 필�
 
 - 공식 핸드북: https://www.typescriptlang.org/docs/handbook/intro.html
 - 유틸리티 타입 목록: https://www.typescriptlang.org/docs/handbook/utility-types.html
+- 함수 오버로드(§3.9): https://www.typescriptlang.org/docs/handbook/2/functions.html#function-overloads
+- Mapped types(§3.10): https://www.typescriptlang.org/docs/handbook/2/mapped-types.html
+- Indexed access types(§3.10): https://www.typescriptlang.org/docs/handbook/2/indexed-access-types.html
 - React+TS 치트시트: https://react-typescript-cheatsheet.netlify.app/
 - 이 프로젝트 실물: §0 표의 파일들

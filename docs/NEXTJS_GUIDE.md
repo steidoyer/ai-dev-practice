@@ -150,7 +150,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
 `NEXT_PUBLIC_`를 붙이면 **그 값은 클라이언트 번들에 그대로 박힌다.** API 키·secret엔 절대 이 접두사를 붙이지 말 것.
 
 ### 5.6 hydration mismatch
-서버가 그린 HTML과 클라이언트 첫 렌더가 다르면 경고+깜빡임. 원인: `Date.now()`/`Math.random()`/`localStorage`를 렌더 중에 사용, 브라우저 확장 간섭 등. 이런 값은 `useEffect`에서 세팅.
+서버가 그린 HTML과 클라이언트 첫 렌더가 다르면 경고+깜빡임. 원인: `Date.now()`/`Math.random()`/`localStorage`를 렌더 중에 사용, **`matchMedia`/`useReducedMotion` 등 서버엔 없는 "클라 전용 값"으로 render 출력을 분기**, 브라우저 확장 간섭 등.
+- **클라 전용 값 해결**: 서버는 그 값을 못 받으니(요청에 안 실림) **서버는 기본값으로 렌더 → 마운트 후 클라에서 실제값으로 보정**해야 한다. `useEffect`로 세팅(마운트 게이트)해도 되지만, **`useSyncExternalStore`(+ `getServerSnapshot`)** 가 정석(재구독·테어링까지 처리). 예: reduced-motion을 `useReducedMotionSafe` 훅으로(→ `FRAMER_MOTION_GUIDE.md` §5.3).
+- **범위**: 내 환경/로컬 한정이 아니라 **범용 React SSR 이슈**(Remix·Astro 등도). **dev는 콘솔 경고**, **prod는 경고 없이도 해당 서브트리를 클라에서 재생성**(깜빡임·SSR 이점 손실)하므로 실제 버그다. (HMR로 인한 stale 번들 불일치는 별개 → §7.1)
 
 ### 5.7 next/image
 `fill`을 쓰면 부모에 `position: relative`+크기가 있어야 하고 `sizes`를 정확히 줘야 함(안 그러면 과대 로드/CLS). above-the-fold만 `priority`. 외부 도메인은 `next.config`의 `images.remotePatterns` 등록(→ 실물: `next.config.ts`).
@@ -179,6 +181,25 @@ npm run lint    # ESLint
 - 빌드 출력의 **라우트 표**로 각 경로가 정적(`○`)인지 동적(`ƒ`)인지 확인.
 - 개발 중 에러는 브라우저 **에러 오버레이**에 스택과 함께 뜬다. 서버 컴포넌트 에러는 터미널 로그도 같이 볼 것.
 - "use client가 필요하다" / "훅은 서버 컴포넌트에서 못 쓴다" 류 에러 → §2.2/§5.2를 먼저 확인.
+
+### 7.1 HMR이 꼬일 때 — stale 번들 (증상이 코드와 안 맞으면 의심)
+
+**HMR(Hot Module Replacement)**: 개발 서버(Turbopack)가 파일을 저장할 때마다 **바뀐 모듈만 교체**해 새로고침 없이 화면을 갱신하는 기능. 빠르지만, 모듈이 **상태·구독**을 들고 있으면 교체가 **부분적으로만** 반영돼 **화면에서 도는 코드가 소스와 어긋나는** 상태(= *stale 번들*)가 될 수 있다.
+
+**판별 — "코드상 불가능한 동작"이 보이면 의심**
+- 코드는 latched(단조 증가)인데 스크롤 올릴 때 애니메이션이 **되감긴다**(= 옛 `scrollYProgress` 직결 버전이 아직 돎).
+- 로그로 읽은 값과 화면에 칠해진 값이 **다르다**(구독이 옛 객체에 남음).
+- **일부는 옛 동작, 일부는 깨진 동작**이 섞여 있다.
+
+**잘 나는 조건**: **framer-motion `MotionValue`/구독(`useMotionValueEvent` 등)** 을 **빠르게 반복 편집**할 때. MotionValue는 렌더 밖에서 구독으로 연결돼 있어 모듈 교체 시 옛 구독이 남기 쉽다. (이 저장소 Approach 인터랙션 작업 중 반복 발생.)
+
+**대응 사다리 (위에서부터)**
+1. **브라우저 강력 새로고침**(Ctrl+F5): 클라이언트만 리셋. 가장 가벼움.
+2. **개발 서버 완전 재시작**: 터미널 `Ctrl+C`로 끄고 `npm run dev` 재실행 → 강력 새로고침. HMR 모듈 그래프를 새로 만든다. **브라우저 새로고침만으론 안 지워지는 서버측 stale은 이걸로 풀린다.**
+3. **`.next` 삭제 후 재시작**: `.next`(빌드 캐시)까지 지우고 `npm run dev`. 2로도 안 되면 여기까지. `.next`는 캐시라 지워도 안전(다음 실행 때 재생성).
+4. 그래도면 stale이 아니라 **진짜 코드 버그** → 다시 코드를 본다.
+
+> 요령: "코드는 맞는데 화면이 이상하다"면 원인 규명 전에 **2~3번부터** 해보는 게 시간을 아낀다. 단, 매번 리셋으로 덮지 말고 **"이게 지금 코드로 가능한 동작인가?"** 를 먼저 자문할 것 — 진짜 버그를 stale로 오해하면 안 되니까. (관련: latch 원리 `FRAMER_MOTION_GUIDE.md` §3.2)
 
 ---
 
