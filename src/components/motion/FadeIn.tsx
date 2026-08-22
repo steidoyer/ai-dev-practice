@@ -1,6 +1,7 @@
 'use client'
 
-import { motion, useReducedMotion } from 'framer-motion'
+import { useReducedMotionSafe } from '@/hooks/useReducedMotionSafe'
+import { motion } from 'framer-motion'
 
 type FadeInProps = {
   children: React.ReactNode
@@ -16,11 +17,9 @@ type FadeInProps = {
  * 모션 최소화 선호 사용자는 애니메이션 없이 즉시 최종 상태로 렌더한다.
  */
 export default function FadeIn({ children, delay = 0, className }: FadeInProps) {
-  const prefersReducedMotion = useReducedMotion()
-
-  const hidden = prefersReducedMotion
-    ? { opacity: 1, y: 0 }
-    : { opacity: 0, y: 24 }
+  const reduce = useReducedMotionSafe() 
+  
+  const hidden = { opacity: 0, y: 24 }
 
   return (
     <motion.div
@@ -28,7 +27,7 @@ export default function FadeIn({ children, delay = 0, className }: FadeInProps) 
       initial={hidden}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.6, ease: 'easeOut', delay }}
+      transition={reduce ? {duration: 0 } : { duration: 0.6, ease: 'easeOut', delay }}
     >
       {children}
     </motion.div>

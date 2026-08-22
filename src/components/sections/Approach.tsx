@@ -1,8 +1,8 @@
 'use client'
 
-import { motion, useReducedMotion, useTransform, useScroll, useMotionValue, useMotionValueEvent, type MotionStyle } from 'framer-motion'
+import { motion, useTransform, useScroll, useMotionValue, useMotionValueEvent, type MotionStyle } from 'framer-motion'
 import FadeIn from '../motion/FadeIn'
-import { useEffect, useState, useRef, useSyncExternalStore } from 'react';
+import { useRef} from 'react';
 import { useReducedMotionSafe } from '@/hooks/useReducedMotionSafe';
 import { FiArrowDown } from "react-icons/fi";
 
@@ -46,18 +46,8 @@ const itemVariants = {
   show: { opacity: 1, y: 0 }
 }
 
-
-
-export default function Approach() {
-
-  // const prefersReduced = useReducedMotion();
-  // const [mounted, setMounted] = useState(false);
-  // useEffect(() => setMounted(true), []);
-  
-const reduce = useReducedMotionSafe()
-  // const reduce = mounted && prefersReduced;
-  // const reduce = useReducedMotion()
-  
+export default function Approach() {  
+  const reduce = useReducedMotionSafe() 
   const targetRef = useRef(null);
 
   const { scrollYProgress } = useScroll({
