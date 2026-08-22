@@ -599,15 +599,18 @@ const image = { rest: { scale: 1 }, hover: { scale: 1.05 } }
 
 ### 5.3 접근성: prefers-reduced-motion 존중
 
-- `useReducedMotion()`으로 분기해 **큰 이동/무한 반복을 끄거나 페이드만** 남긴다.
+모션 최소화 사용자에겐 **큰 이동/무한 반복을 끄거나 페이드만** 남긴다.
 
-```tsx
-const reduce = useReducedMotion()
-<motion.div animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }} />
-```
+**⚠️ SSR 함정 (가장 중요)**: framer의 `useReducedMotion()`은 **서버=false / 클라=true**(서버엔 `matchMedia`가 없어 기본 false)라, 이 값으로 **렌더 출력(className·style·variants·initial)을 분기하면 하이드레이션 불일치**가 난다(reduced 켠 사용자에게만, 그래서 놓치기 쉬움). → **렌더 분기엔 SSR-안전한 `useReducedMotionSafe`**(`useSyncExternalStore` + `getServerSnapshot=()=>false`. 이 프로젝트 `src/hooks/useReducedMotionSafe.ts`)를 쓴다. raw `useReducedMotion()`은 **렌더 출력이 아닌 이벤트 핸들러 분기**(예: `scrollIntoView` behavior)엔 그대로 써도 된다. (배경 → `NEXTJS_GUIDE.md` §5.6)
 
-- 전역으로는 `<MotionConfig reducedMotion="user">`로 한 번에 처리 가능.
-- **주의**: JS 스크롤(`scrollIntoView({behavior:'smooth'})`)은 이 설정을 **자동으로 안 지킨다** — 직접 분기해야 함(→ Hero의 화살표 스크롤이 그렇게 처리). → `A11Y_CHECKLIST.md` 7번.
+**두 가지 처리 방식**
+
+1. **`<MotionConfig reducedMotion="user">` (선언형에 깔끔)** — 하위 framer 컴포넌트에 상속. framer가 런타임에서 **이동(transform)만 끄고 `opacity`는 유지**한다. variants를 손대지 않으니 **SSR-안전 + 아래의 "갇힘" 버그 없음**. 단 **`style`에 꽂은 스크롤 MotionValue(값 구동)는 "애니메이션"이 아니라 안 걸린다** → 그건 2번으로. (client 경계 필요: `layout`이 서버 컴포넌트면 작은 `'use client'` 래퍼 안에서 감쌀 것.)
+2. **`useReducedMotionSafe`로 직접 분기** — 값 구동(스크롤)·CSS(className)엔 이걸로. ⚠️ **`variants = reduce ? undefined : …`처럼 `undefined`로 뽑지 말 것**: 마운트-후 값이 뒤집히는 순간 `show` 타깃이 사라져 **내용이 안 보이는 버그**가 난다. 대신 **정의된 reduced 변형**(예: `show:{ opacity:1, transition:{ duration:0 } }`)이나 **`transition`만 분기**(`transition={reduce ? {duration:0} : {…}}`)해서 **항상 보이는 상태로 스냅**시킨다.
+
+**한계 — "완전 즉시(페이드 0)"는 어렵다**: 서버가 reduced 여부를 모르니 hidden 상태로 SSR → 클라는 짧게 페이드가 보였다 스냅된다(값이 뒤집히는 창). SSR 등장 애니메이션의 구조적 대가다. reduced-motion의 본질은 **이동 제거**이므로 **짧은 opacity 페이드는 일반적으로 허용**된다. 정말 0으로 만들려면 등장을 **CSS로 옮기고 `motion-reduce:`로 끄는** 수밖에 없다.
+
+**JS 스크롤 주의**: `scrollIntoView({behavior:'smooth'})`는 이 설정을 자동으로 안 지킨다 — `behavior`를 직접 분기(→ Hero 화살표, 이벤트 핸들러라 훅 종류 무관). → `A11Y_CHECKLIST.md` §7.
 
 ### 5.4 AnimatePresence 함정
 
@@ -630,6 +633,7 @@ const reduce = useReducedMotion()
 ### 5.7 SSR/hydration 깜빡임
 
 - `initial`을 안 주면 서버 렌더 결과와 최종 상태가 달라 깜빡일 수 있다. 등장 애니메이션엔 `initial`을 명시.
+- **reduced-motion 분기로 인한 불일치**: framer `useReducedMotion()`을 render 출력 분기에 쓰면 서버(false)/클라(true)가 달라 **하이드레이션 불일치**가 난다. → §5.3의 `useReducedMotionSafe`/`MotionConfig`로 해결. (원인·범위 `NEXTJS_GUIDE.md` §5.6)
 
 ---
 
@@ -659,7 +663,7 @@ import { LazyMotion, domAnimation, m } from "framer-motion";
    - 부모의 `initial`/`animate`가 **문자열**로 들어가 있나? (전파의 실제 조건 → §2.4.3)
 4. exit가 안 되면: `AnimatePresence`로 감쌌나? 직계 자식 **key** 있나? 조건부가 안쪽인가?
 5. 스크롤 값이면 `animate`가 아니라 **`style`**에 MotionValue를 꽂았나?
-6. reduced-motion 설정 때문에 꺼진 건 아닌가? (이 프로젝트는 Hero·ProjectCard가 `prefersReducedMotion`일 때 variants를 통째로 `undefined`로 넘긴다 — 그러면 **무엇을 바꾸든 아무 일도 일어나지 않는다**)
+6. reduced-motion 설정 때문에 꺼진 건 아닌가? reduced일 때 애니메이션을 죽이도록 분기하므로(→ §5.3), 그럼 **무엇을 바꾸든 아무 일도 안 일어난다**. (⚠️ `variants`를 `undefined`로 뽑는 방식은 마운트-후 값이 뒤집힐 때 **내용이 안 보이는** 버그 → §5.3. 렌더 분기는 `useReducedMotionSafe`로.)
 7. **타입 오류가 났다면 우회하지 말 것** — 오류 메시지의 타입 이름이 곧 그 자리의 API 명세다. → §2.4.9
 
 ---

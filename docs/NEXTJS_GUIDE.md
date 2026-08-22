@@ -150,7 +150,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
 `NEXT_PUBLIC_`를 붙이면 **그 값은 클라이언트 번들에 그대로 박힌다.** API 키·secret엔 절대 이 접두사를 붙이지 말 것.
 
 ### 5.6 hydration mismatch
-서버가 그린 HTML과 클라이언트 첫 렌더가 다르면 경고+깜빡임. 원인: `Date.now()`/`Math.random()`/`localStorage`를 렌더 중에 사용, 브라우저 확장 간섭 등. 이런 값은 `useEffect`에서 세팅.
+서버가 그린 HTML과 클라이언트 첫 렌더가 다르면 경고+깜빡임. 원인: `Date.now()`/`Math.random()`/`localStorage`를 렌더 중에 사용, **`matchMedia`/`useReducedMotion` 등 서버엔 없는 "클라 전용 값"으로 render 출력을 분기**, 브라우저 확장 간섭 등.
+- **클라 전용 값 해결**: 서버는 그 값을 못 받으니(요청에 안 실림) **서버는 기본값으로 렌더 → 마운트 후 클라에서 실제값으로 보정**해야 한다. `useEffect`로 세팅(마운트 게이트)해도 되지만, **`useSyncExternalStore`(+ `getServerSnapshot`)** 가 정석(재구독·테어링까지 처리). 예: reduced-motion을 `useReducedMotionSafe` 훅으로(→ `FRAMER_MOTION_GUIDE.md` §5.3).
+- **범위**: 내 환경/로컬 한정이 아니라 **범용 React SSR 이슈**(Remix·Astro 등도). **dev는 콘솔 경고**, **prod는 경고 없이도 해당 서브트리를 클라에서 재생성**(깜빡임·SSR 이점 손실)하므로 실제 버그다. (HMR로 인한 stale 번들 불일치는 별개 → §7.1)
 
 ### 5.7 next/image
 `fill`을 쓰면 부모에 `position: relative`+크기가 있어야 하고 `sizes`를 정확히 줘야 함(안 그러면 과대 로드/CLS). above-the-fold만 `priority`. 외부 도메인은 `next.config`의 `images.remotePatterns` 등록(→ 실물: `next.config.ts`).

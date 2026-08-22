@@ -107,6 +107,68 @@ git rebase -i --autosquash <base>                        # 3) fixup들이 기준
 
 ---
 
+## 6. PR (Pull Request, GitHub)
+
+**PR = 브랜치를 `main`에 합치기 전에 변경을 검토·기록하는 창구.** 로컬 `git merge`(§1)로도 합칠 수 있지만, PR을 쓰면 **정리된 단위로 `main`에 들어가고 리뷰·기록이 남는다**(솔로 연습이라도 자기 리뷰·회고용으로 유용).
+
+**흐름**
+1. 브랜치 push → GitHub이 PR 링크를 알려줌.
+   ```bash
+   git push -u origin feat/approach-interaction
+   ```
+2. **PR 열기** — GitHub 웹 링크로, 또는 CLI:
+   ```bash
+   gh pr create --fill          # 커밋 메시지로 제목/본문 자동 채움
+   # gh pr create --title "..." --body "..."   # 직접 지정
+   ```
+3. **(자기)리뷰** — diff 확인. 브랜치에 **추가 커밋을 push하면 PR에 자동 반영**된다(같은 브랜치니까).
+4. **merge → 브랜치 삭제.**
+   ```bash
+   gh pr merge --squash --delete-branch     # 아래 방식 중 택1 + 브랜치 정리
+   ```
+
+**머지 방식 3가지 (main 히스토리에 어떻게 남나)**
+| 방식 | 결과 | 언제 |
+|---|---|---|
+| **Merge commit** | 브랜치 커밋 **그대로** + 병합 커밋 1개 | 브랜치 히스토리를 다 남기고 싶을 때 |
+| **Squash merge** | 브랜치의 여러 커밋을 **하나로 합쳐** main에 올림 | **WIP가 많을 때 추천** — main이 깔끔 |
+| **Rebase merge** | 브랜치 커밋들을 main 위에 **재배치**(병합 커밋 없음) | 선형 히스토리를 원할 때 |
+
+> §3~§4(로컬 rebase squash)로 미리 정리했다면 **Merge commit**으로 그대로 올려도 깔끔하고, 로컬 정리를 안 했다면 PR에서 **Squash merge**로 한 번에 합치면 된다. 둘 중 하나만 쓰면 충분(양쪽 다 squash하면 과함).
+
+### 6.1 로컬 rebase(§3) vs PR 머지 방식(§6) — 헷갈리지 말 것
+
+둘은 **작동 시점이 다르다.**
+- **interactive rebase (§3)** = **내 브랜치 안에서** 커밋을 정리하는 **로컬 편집**(재배치·합치기·reword·drop). 병합 전 청소.
+- **머지 방식 (위 표)** = 브랜치를 **`main`에 통합하는 방법**. 통합 시점(보통 GitHub 버튼)에 고른다.
+
+**"squash merge = interactive rebase?" → 아니다.** 겹치는 건 "여러 커밋 → 하나"라는 **결과**뿐. rebase squash는 *내가 브랜치에서 손으로*(게다가 더 많은 걸) 하고, squash merge는 *`main`에 넣을 때 브랜치 전체를 자동으로* 한 커밋으로 만든다.
+
+**세 머지 방식이 `main`에 남기는 것** (브랜치 커밋 N개 기준):
+- **Squash merge** → `main`에 **1개**(합쳐짐). 브랜치 개별 커밋은 `main`에 안 남음.
+- **Rebase merge** → `main`에 **N개 그대로**(끝에 재배치, 병합 커밋 없음 → 선형).
+- **Merge commit** → **N개 + 병합 커밋 1개**(갈라졌다 합류하는 모양이 보임).
+
+### 6.2 제일 단순한 흐름 — "한 브랜치 = 한 squash-merge" (편한 기본값)
+
+분리·정리에 신경 쓰기 싫으면 이게 제일 편하다:
+1. 브랜치를 **한 기능 단위**로 잡는다.
+2. 브랜치 안에선 **막 커밋해도 된다** — WIP·code/docs 섞임 상관없음(브랜치 = 작업실).
+3. PR에서 **Squash merge** → `main`엔 **정리된 딱 한 커밋**만 남는다.
+
+- **장점**: 선택 스테이징·autosquash·code/docs 분리를 **다 생략**. bookkeeping 최소(많은 팀의 기본값).
+- **대가**: `main`에서 code/docs 따로 못 보고, 부분 revert 불가(한 커밋이라). **솔로 연습엔 대개 충분.**
+- **반대로**, §2.2처럼 **code/docs를 나눠 `main`에 남기고 싶으면** squash 대신 **Merge commit / Rebase merge**를 써야 한다. → **"분리"와 "squash"는 동시에 못 간다** — 둘 중 하나만 고른다.
+
+**병합 후 브랜치 정리**(gh가 `--delete-branch`로 안 지웠다면):
+```bash
+git switch main && git pull          # main 최신화
+git branch -d feat/approach-interaction          # 로컬 삭제
+git push origin --delete feat/approach-interaction  # 원격 삭제
+```
+
+---
+
 ## 참고
 
 - 저장소 baseline/clone 전략·`ai-only` 태그: `NEXT_ROADMAP.md`, `README.md`, `CLAUDE.md`.

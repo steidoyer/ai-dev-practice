@@ -116,10 +116,10 @@ h3  ProjectCard   프로젝트 제목
 
 **이 프로젝트** — CSS와 JS 양쪽 처리:
 - CSS: `@media (prefers-reduced-motion: reduce)`에서 `scroll-behavior: auto`(부드러운 스크롤 비활성화). (`globals.css`)
-- framer-motion: `FadeIn`·`Hero`·`Header`·`ProjectCard`가 `useReducedMotion()`으로 등장/hover/바운스 애니메이션을 최소화.
-- JS 스크롤: Hero 화살표 클릭의 `scrollIntoView`는 CSS 미디어쿼리를 자동 반영하지 않으므로, `prefersReducedMotion`에 따라 `behavior`를 `'smooth'`/`'auto'`로 **직접 분기**했다.
+- framer-motion: `FadeIn`·`Hero`·`Approach`·`Header`·`ProjectCard`가 reduced일 때 등장/hover/바운스를 최소화. **렌더 출력 분기는 SSR-안전한 `useReducedMotionSafe`** 훅으로 한다 — framer의 `useReducedMotion()`을 render 분기에 쓰면 **하이드레이션 불일치**(서버=false/클라=true). (→ `FRAMER_MOTION_GUIDE.md` §5.3, `NEXTJS_GUIDE.md` §5.6)
+- JS 스크롤: Hero 화살표 클릭의 `scrollIntoView`는 CSS 미디어쿼리를 자동 반영하지 않으므로, reduced에 따라 `behavior`를 `'smooth'`/`'auto'`로 **직접 분기**했다(이벤트 핸들러라 훅 종류 무관).
 
-**새로 추가할 때**: framer-motion을 쓰면 `useReducedMotion()`으로 가드. 재사용 래퍼(`FadeIn`)에 감싸면 이 처리가 자동 상속된다. JS로 스크롤/애니메이션을 직접 돌릴 때는 미디어쿼리를 코드로 반영할 것.
+**새로 추가할 때**: framer render 출력을 reduced로 분기하면 **`useReducedMotionSafe`로 가드**(SSR-안전). 선언형 등장은 `<MotionConfig reducedMotion="user">`도 방법(이동만 끄고 opacity 유지). 재사용 래퍼(`FadeIn`)에 감싸면 이 처리가 자동 상속된다. JS로 스크롤/애니메이션을 직접 돌릴 때는 미디어쿼리를 코드로 반영할 것.
 
 ## 8. 개발자도구(DevTools)로 접근성 확인하기
 
