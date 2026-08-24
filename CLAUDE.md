@@ -2,7 +2,7 @@
 
 Claude Code가 세션 시작 시 자동으로 읽는 파일. 규칙과 영구 컨텍스트만 담는다.
 (진행 로그·의사결정·프롬프트는 `docs/PROJECT_PLAYBOOK.md`, clone 이후 직접 코딩 계획·AI 멘토 규칙은 `docs/NEXT_ROADMAP.md`,
-3단계 새 섹션 기획 확정안은 `docs/SECTION_APPROACH_PLAN.md`·`docs/SECTION_JOURNEY_PLAN.md`·`docs/SECTION_SERVICES_PLAN.md`, 스크롤 병합 인터랙션 구현 참고 자료는 `docs/SCROLL_MERGE_GUIDE.md`, 코드 리뷰·질문 로그는 `docs/CODE_REVIEW_LOG.md`, git 브랜치·커밋·rebase 워크플로우는 `docs/GIT_WORKFLOW.md`,
+3단계 새 섹션 기획 확정안은 `docs/SECTION_APPROACH_PLAN.md`·`docs/SECTION_JOURNEY_PLAN.md`·`docs/SECTION_SERVICES_PLAN.md`, 스크롤 병합 인터랙션 구현 참고 자료는 `docs/SCROLL_MERGE_GUIDE.md`, 코드 리뷰·질문 로그는 `docs/CODE_REVIEW_LOG.md`, 작업(문제→원인→해결) 기록은 `docs/WORK_LOG.md`, git 브랜치·커밋·rebase 워크플로우는 `docs/GIT_WORKFLOW.md`,
 기술 사용법 가이드는 `docs/FRAMER_MOTION_GUIDE.md`·`docs/TYPESCRIPT_GUIDE.md`·`docs/NEXTJS_GUIDE.md`·`docs/TAILWIND_REFERENCE.md`·`docs/CSS_ADVANCED.md`, 개념 Q&A는 `docs/DEV_QNA.md`, 접근성은 `docs/A11Y_CHECKLIST.md` 참고.)
 
 ## 개발 프로세스
@@ -19,7 +19,7 @@ Claude Code가 세션 시작 시 자동으로 읽는 파일. 규칙과 영구 �
 ## 개요
 - **목적: AI 도구(Claude Code + Figma MCP + Claude 앱) 활용 개발을 연습·공부하는 프로젝트.** 저장소명 `ai-dev-practice`.
 - 만드는 페이지는 "개발자 포트폴리오 1페이지 랜딩"이지만, 실제 포트폴리오 용도가 아니라 **AI 개발 연습의 소재**다.
-- 섹션 순서(현재): Hero → Approach → Projects → Skills → CTA(연락처). *직접 손코딩으로 Approach 추가됨. Journey·Services는 기획 완료·구현 대기 → 목표 순서: Hero → Approach → Journey → Projects → Skills → Services → CTA.* 스타일: 다크 모던 / 미니멀, 인터랙션 포함.
+- 섹션 순서(현재): Hero → Approach → Journey → Projects → Skills → CTA(연락처). *직접 손코딩으로 Approach·Journey 추가됨. Services는 기획 완료·구현 대기 → 목표 순서: Hero → Approach → Journey → Projects → Skills → Services → CTA.* 스타일: 다크 모던 / 미니멀, 인터랙션 포함.
 - 브랜드명 `DEV STUDIO`, 도메인/이메일 `example.dev`는 **플레이스홀더**(실명·실주소 아님).
 - 계획/대화는 Claude 앱, 코드 작성은 Claude Code, 디자인은 Figma(MCP 연결).
 
@@ -43,7 +43,7 @@ Claude Code가 세션 시작 시 자동으로 읽는 파일. 규칙과 영구 �
 ## 규칙 / 컨벤션
 - 컴포넌트 경로:
   - 레이아웃: `src/components/layout/` (Header, Footer)
-  - 섹션: `src/components/sections/` (Hero, Projects, Skills, CTA)
+  - 섹션: `src/components/sections/` (Hero, Approach, Journey, Projects, Skills, CTA)
 - 색상·폰트·spacing·radius 등 디자인 토큰은 `src/app/globals.css`의 `@theme` 블록에 정의하고,
   컴포넌트에서는 토큰만 사용한다. **색상값 하드코딩 금지.**
 - `"use client"`는 인터랙션이 필요한 컴포넌트에만 붙인다. 정적 컴포넌트에는 생략.
@@ -54,7 +54,7 @@ Claude Code가 세션 시작 시 자동으로 읽는 파일. 규칙과 영구 �
   `fill` + `sizes`로 CLS를 방지하고, 첫 화면(above the fold) 이미지에만 `priority`(나머지는 lazy 기본).
   외부 도메인 이미지는 `next.config.ts`의 `images.remotePatterns`에 호스트를 등록한다.
   (아이콘·간단한 그래픽은 지금처럼 인라인 SVG 유지 — 최적화 대상 아님.)
-- 각 섹션 `<section>`에 앵커 id 부여: `#hero`, `#projects`, `#skills`, `#contact`.
+- 각 섹션 `<section>`에 앵커 id 부여: `#hero`, `#approach`, `#journey`, `#projects`, `#skills`, `#contact`.
   (Header 네비 앵커와 id 이름을 항상 일치시킬 것)
 - 반복 데이터(프로젝트 카드, 기술 스택 등)는 배열로 분리해 map 렌더링.
 - 좌우 패딩·중앙 정렬은 공통 컨테이너 유틸리티 `container-page`(globals.css `@utility`)로 통일한다.
