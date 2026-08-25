@@ -54,8 +54,9 @@
 > 아래 5가지를 **한 섹션에 모아** 연습한다. 단 §3.끝의 "밀도 주의"를 지킬 것.
 
 1. **스파인 선 그리기 + 선 머리 발광 (핵심·새 기술)**
-   - 세로 **스파인 선**을 **SVG `<path>`**로 두고, framer-motion **`pathLength`**(0→1)를 `scrollYProgress`에 연결 → 스크롤에 맞춰 선이 **그려진다**. `style={{ pathLength: scrollYProgress }}` 꼴.
-   - **선 머리(그려지는 끝)에 발광/그라데이션**: SVG `linearGradient` 스트로크로 끝부분을 밝게, 또는 **팁을 따라다니는 작은 발광 점**(팁 좌표를 진행도로 계산해 이동). → **SVG 필수**(그래서 §8에서 "선 그리기=SVG"로 사실상 확정; `div` `scaleY`는 발광 불가).
+   - **[구현 반영] 스파인은 SVG `<path>`가 아니라 CSS 마디(각 `<li>`의 연결선 `div`)로 확정.** 단일 `<path>`로는 선이 첫 점~마지막 점에서 딱 멈추면서 카드 높이에 맞춰 늘어나게 하기 어려워 좌표를 손으로 찍게 된다. 그래서 마커열을 `[윗선·점·아랫선]`으로 나눠 `flex-1`로 자동 정렬(좌표 하드코딩 0). 상세: `JOURNEY_SESSION_NOTE.md`·`WORK_LOG.md`.
+   - **선 그리기**: 각 마디를 **`scaleY` 0→1**(+`transform-origin: top`)로 펼친다. `scrollYProgress`를 마디별 구간에 매핑(진행도 비례) 또는 `whileInView`(진입 시). `pathLength` 대신 `scaleY`.
+   - **선 머리 발광**: CSS 마디에는 SVG `linearGradient` 스트로크를 못 쓴다 → **`box-shadow` glow / 이동 발광 `div`**로 대체하거나 **축소**(밀도 주의). 발광이 꼭 필요하면 스파인만 별도 SVG 오버레이로 재도입하는 안도 있음(트레이드오프 §8.2).
    - `useScroll({ target: 섹션 ref, offset })`로 진행도 확보(Approach와 동일 훅, sticky 불필요).
 2. **마일스톤 노드 등장**
    - 각 노드(점 + 카드)는 선이 그 지점에 닿을 즈음 **등장**: 점이 accent로 채워지고 카드가 **페이드+살짝 슬라이드**.
@@ -88,7 +89,7 @@
 
 ## 5. 접근성 / 시맨틱
 
-- 타임라인 = **순서 있는 목록** → `<ol>`/`<li>`(시간 순서를 의미로). 스파인 선·발광(SVG)은 **장식** → `aria-hidden`.
+- 타임라인 = **순서 있는 목록** → `<ol>`/`<li>`(시간 순서를 의미로). 스파인 선(CSS 마디 `div`)·발광은 **장식** — 의미 없는 빈 요소라 스크린리더가 무시(별도 처리 불필요). *(발광용으로 SVG를 재도입하면 그 SVG엔 `aria-hidden`.)*
 - 정지 상태(모션 없이)에서 **연도·제목·설명이 모두 읽혀야** 한다 → 마크업 우선.
 - **색만으로 의미 전달 금지**(WCAG 1.4.1): "융합형" 강조는 텍스트로도 완결(와이프가 안 돼도 읽힘).
 - **hover 강조는 포인터 전용** → hover 없이(키보드/터치)도 모든 정보 접근 가능. hover는 강조일 뿐, 내용 은닉 금지.
@@ -98,7 +99,7 @@
 
 ## 6. 새로 연습하는 기술 + 참고
 
-- **신규**: ① SVG + framer-motion **`pathLength`**(선 그리기), ② **SVG `linearGradient`/발광 스트로크**(선 머리), ③ **`whileHover`/`whileTap`** 제스처.
+- **신규**: ① CSS 마디 **`scaleY`** 선 그리기(scrollYProgress 연동) *(당초 SVG `pathLength` 계획 → 정렬 문제로 CSS 마디로 변경, §3.1)*, ② 선 머리 **발광**(`box-shadow`/이동 `div`; SVG `linearGradient`는 CSS 마디에선 불가), ③ **`whileHover`/`whileTap`** 제스처.
 - **재사용**: `useScroll`/`scrollYProgress`(Approach), 진행도 threshold 매핑·`useTransform`(Approach), `background-clip` 와이프(`CSS_ADVANCED.md` §5).
 - 참고:
   - framer-motion `pathLength`·gestures: https://motion.dev/docs/react-motion-component — 정확한 API는 설치 버전 `.d.ts` 대조.
@@ -113,10 +114,10 @@
 
 ## 7. 권장 구현 순서 (마크업 → 스타일 → 인터랙션)
 
-1. **마크업 먼저**(모션 없이, 정지에서 의미 완결): `<ol>` 타임라인 + 각 `<li>` 연도/제목/설명, 스파인 선 자리(정적 SVG).
+1. **마크업 먼저**(모션 없이, 정지에서 의미 완결): `<ol>` 타임라인 + 각 `<li>` 연도/제목/설명, 스파인 선 자리(정적 **CSS 마디**: `div` 연결선).
 2. **스타일**(Tailwind·토큰): 선·점·카드 배치, 색은 토큰, 좌측(또는 중앙) 선 정렬.
 3. **인터랙션(하나씩 쌓기)**:
-   ① `useScroll` 진행도 확인(숫자로 찍기) → ② 선 `pathLength` 연결(그려지는지) → ③ 노드 등장/선끝 강조(threshold) → ④ 선 머리 발광 → ⑤ 융합형 색 와이프 → ⑥ 카드 `whileHover`/`whileTap` → ⑦ `useReducedMotion` 정지 최종형.
+   ① `useScroll` 진행도 확인(숫자로 찍기) → ② 마디 `scaleY` 연결(그려지는지) → ③ 노드 등장/선끝 강조(threshold) → ④ 선 머리 발광 → ⑤ 융합형 색 와이프 → ⑥ 카드 `whileHover`/`whileTap` → ⑦ `useReducedMotion` 정지 최종형.
    > 한 번에 다 넣지 말고 ①→⑦ 순서로 **하나 확인하고 다음**. 막히면 그 단계에서 멈춰 점검.
 
 > 마크업(1단계) 개념 상세는 별도 세션 노트 `JOURNEY_SESSION_NOTE.md` 참고.
@@ -125,9 +126,9 @@
 
 ## 8. 아직 열린 결정 (구현 전/중 확정)
 
-1. **레이아웃**: 데스크탑 (A) 좌측 선 단일 컬럼 vs (B) 중앙 선 좌우 교차.
-2. **선 머리 발광 방식**: `linearGradient` 스트로크 vs 마스크 vs **팁 추적 발광 점**(어느 게 쉬운지 실험). *(선 그리기 자체는 발광 때문에 **SVG로 확정** — `scaleY` div 제외.)*
-3. **노드 등장 + 선끝 강조 구동**: 둘을 **진행도 threshold로 통합**(권장) vs 등장은 `whileInView` once + 강조만 threshold. (통합이 스크롤 위치 일관성 有)
-4. **마일스톤 개수·문구**: 4개 확정? 실제 연도/제목/설명.
-5. **hover 세부**: lift 정도·보더 처리, `whileTap` 유무, 터치기기 대체 동작.
-6. **네비 라벨**: `Journey` vs `Path` vs 기타. 확정 시 `Header.tsx`·`CLAUDE.md` 갱신.
+1. **[확정]** 레이아웃 = 데스크탑·모바일 모두 **(A) 좌측 선 단일 컬럼**(왼쪽 스파인 + 오른쪽 카드).
+2. **선 머리 발광 방식**(3단계): 스파인이 CSS 마디라 `linearGradient` 스트로크 불가 → **`box-shadow` glow** vs **팁 추적 발광 `div`** vs **발광 생략** 중 택. *(당초 "발광 때문에 SVG 확정, scaleY div 제외"는 철회 — 정렬 문제로 CSS 마디 `scaleY` 채택, §3.1.)*
+3. **노드 등장 + 선끝 강조 구동**(3단계): 둘을 **진행도 threshold로 통합**(권장) vs 등장은 `whileInView` once + 강조만 threshold. (통합이 스크롤 위치 일관성 有)
+4. **[확정]** 마일스톤 **4개**, 연도 허수(3000/3002/3004/3005), 문구는 §2 표대로.
+5. **hover 세부**(3단계): lift 정도·보더 처리, `whileTap` 유무, 터치기기 대체 동작.
+6. **[확정]** 네비 라벨 **`Road`**(`#journey`) — `Header.tsx`·`CLAUDE.md` 반영 완료.
