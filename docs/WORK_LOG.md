@@ -77,3 +77,40 @@ export function useReducedMotionSafe() {
 - **교훈**: 클라 전용 값(`matchMedia`/`useReducedMotion`/`localStorage` 등)으로 **render 출력을 분기하면 SSR 하이드레이션이 깨진다.** 렌더 분기엔 `useSyncExternalStore`(서버 스냅샷). reduced-motion은 `undefined` 스왑 대신 **정의된 reduced 변형**으로.
 - **정제 문서**: `FRAMER_MOTION_GUIDE.md` §5.3(권장 패턴)·§5.7·§7-6, `NEXTJS_GUIDE.md` §5.6, `A11Y_CHECKLIST.md` §7.
 - **관련 소스**: framer `use-reduced-motion.mjs`(SSR 기본 false), React `useSyncExternalStore`(getServerSnapshot).
+
+---
+
+## 스크럽 애니가 "순간에 끝남" → 스크롤 거리 부족 → 데스크탑 sticky pin
+
+**대상**: `src/components/sections/Journey.tsx` (스크롤 선 그리기)
+**증상**: 선 그리기·노드 등장이 스크롤에 따라 "천천히" 안 되고 **순간에 튀듯** 끝나 애니메이션이 안 도는 느낌.
+
+### 원인 — 스크럽은 "시간(duration)"이 아니라 "스크롤 거리"에 매핑된다
+스크롤 구동(스크럽) 애니는 초 단위 duration이 없다. 진행도 0→1이 **얼마만큼의 스크롤에 매핑되느냐**가 전부다. Journey는 `min-h-screen`(≈1화면) + offset `["start start","end end"]`라, 진행도 0→1이 도는 거리 = `섹션높이 − 뷰포트높이` ≈ 0 → 몇십 px 스크롤에 0→1이 튄다. 각 노드는 그 거리의 1/6씩이라 더 짧다. (Approach도 같은 벽을 sticky+tall로 넘었다 — `SCROLL_MERGE_GUIDE.md` ⭐B.)
+
+### 해결 — 키 큰 래퍼 + sticky pin으로 스크롤 거리 확보
+키 큰 래퍼(`md:h-[250vh]`) 안에 `md:sticky md:top-0 md:h-screen` 내부를 두고, `useScroll`의 **`target`을 그 래퍼**로. 래퍼를 스크롤하는 동안 안쪽은 고정된 채 진행도가 길게 흘러 선이 천천히 그려진다. 래퍼 높이로 애니 길이 조절, 덤으로 진입 시 latched가 튀는 것도 완화(0부터 탐).
+- **제약**: 고정되는 타임라인이 **1화면 안에 들어와야** 함(넘으면 잘림) → **모바일은 pin 없이 별도 처리**(`md:` 프리픽스 분기, 애니 드라이버는 `whileInView` 등 후속).
+- 플랜 §0의 "sticky 불필요"는 이로써 철회(반영: `SECTION_JOURNEY_PLAN.md` §0·§4·§8).
+
+### 교훈
+"애니가 짧다" = duration이 아니라 **진행도가 매핑된 스크롤 거리**를 의심. 거리는 섹션 높이 + `useScroll` offset(또는 sticky+tall)로 확보한다.
+
+---
+
+## Journey 노드 draw 스케줄 — 마디 번호·구간·첫 노드 예외
+
+**대상**: `src/components/sections/JourneyItem.tsx`
+**맥락**: CSS 마디(각 `<li>`의 윗선·점·아랫선) 선 그리기를 스크롤 진행도에 순서대로 매핑하는 방법.
+
+### 마디 총량과 번호
+- 그려지는(색 있는) 마디는 **첫 항목 윗선·마지막 항목 아랫선을 뺀** `T = 2*(length-1)`개(4항목이면 6개).
+- 항목 `i`의 **윗선 = 2i-1번째**, **아랫선 = 2i번째**. 각 마디 구간 = `[번호/T, (번호+1)/T]`.
+- 코드에선 구간을 3개로 정리: `seg=[(2i-1)/T,(2i)/T]`(윗선·점·box-shadow), `segBottom=[(2i)/T,(2i+1)/T]`(아랫선), `appear`(등장용, 첫 노드 예외). 같은 구간 배열을 여러 `useTransform`에 재사용(숫자 배열이라 부작용 없음).
+
+### 첫 노드가 처음부터 보이던 문제
+- 노드 등장(opacity/scale)을 `seg`에 걸면 index 0은 `[-1/6, 0]` → `latched=0`에서 입력이 **구간 끝**이라 opacity 1(이미 보임).
+- 해결: 등장 구간만 첫 노드 예외 → `appear = index===0 ? [0, 1/total] : seg`. index 0이 `[0,1/6]`이라 시작 시 opacity 0(숨김) → 스크롤하며 등장. (`[0,0]` 폭 0은 useTransform 입력으로 불가라 양의 창을 줘야 함.)
+
+### origin
+- 마디 `scaleY`엔 **`origin-top`**(transform-origin: top) 필수 — 없으면 가운데서 늘어나 "위→아래로 이어지는" 그림이 안 남.

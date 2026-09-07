@@ -13,7 +13,7 @@
 
 - **새 기술 연습 가치**: 지금까지 안 해 본 **SVG 선 그리기(`pathLength`)** + **그라데이션/발광 스트로크**를 연습한다. framer-motion이 1급 지원, 스크롤 연동과 궁합이 좋다.
 - **배운 것 재활용**: `useScroll`/`scrollYProgress`(Approach에서 익힘)를 재사용하되, 출력을 "원 좌표"가 아니라 "선의 그려진 길이 + 노드 강조"로 바꾼다 → 같은 뼈대의 확장.
-- **sticky 불필요**: Approach와 달리 **sticky/tall 컨테이너가 필요 없다**(선은 섹션을 지나가는 스크롤에 맞춰 제자리에서 그려짐). 구조 부담이 없는 만큼, **대신 여러 인터랙션을 한 섹션에 모아** 폭넓게 연습하는 쪽으로 방향을 잡았다(§3).
+- **~~sticky 불필요~~ → [구현 반영] sticky 채택**: 처음엔 sticky 없이 지나가는 스크롤로 그릴 계획이었으나, 실제로는 **스크롤 거리가 부족**해(섹션이 ≈1화면) 선이 순간에 튀었다 → **데스크탑은 sticky pin + 키 큰 래퍼로 스크롤 거리 확보**(Approach와 같은 패턴, `WORK_LOG.md`·`SCROLL_MERGE_GUIDE.md` ⭐B). 모바일은 pin 없이 별도(§4). 여러 인터랙션을 한 섹션에 모아 연습하는 방향은 유지(§3).
 - **서사 공백을 메움**: "누구(Hero) → 어떻게 생각하나(Approach) → …"에 **"어떤 길을 걸어왔나"**가 빠져 있다.
 - **기존 섹션과 연결**: 마지막 마일스톤을 Approach의 **"융합형"** 정체성으로 수렴시키고, 그 단어에 §5 색 와이프를 재활용해 섹션 간 서사를 잇는다.
 
@@ -27,7 +27,7 @@
 - **배치(두 섹션 추가 후 전체 순서)**: `Hero → Approach → **Journey** → Projects → Skills → **Services** → CTA`.
   - Journey = Approach(관점)의 "유래"를 보인 뒤 결과물 Projects로 넘어가는 다리.
   - Services(`SECTION_SERVICES_PLAN.md`)는 Skills 뒤·CTA 앞.
-- **앵커/네비**: 섹션 `id="journey"`. Header 네비에 라벨 추가(예: `Journey`/`Path`). → 확정 시 `Header.tsx` `navLinks`·`CLAUDE.md` 섹션 목록 갱신.
+- **앵커/네비**: 섹션 `id="journey"`, Header 네비 라벨 **`Road`**(`#journey`). `Header.tsx` `navLinks`·`CLAUDE.md` 섹션 목록 반영 완료.
 
 ---
 
@@ -56,15 +56,16 @@
 1. **스파인 선 그리기 + 선 머리 발광 (핵심·새 기술)**
    - **[구현 반영] 스파인은 SVG `<path>`가 아니라 CSS 마디(각 `<li>`의 연결선 `div`)로 확정.** 단일 `<path>`로는 선이 첫 점~마지막 점에서 딱 멈추면서 카드 높이에 맞춰 늘어나게 하기 어려워 좌표를 손으로 찍게 된다. 그래서 마커열을 `[윗선·점·아랫선]`으로 나눠 `flex-1`로 자동 정렬(좌표 하드코딩 0). 상세: `JOURNEY_SESSION_NOTE.md`·`WORK_LOG.md`.
    - **선 그리기**: 각 마디를 **`scaleY` 0→1**(+`transform-origin: top`)로 펼친다. `scrollYProgress`를 마디별 구간에 매핑(진행도 비례) 또는 `whileInView`(진입 시). `pathLength` 대신 `scaleY`.
-   - **선 머리 발광**: CSS 마디에는 SVG `linearGradient` 스트로크를 못 쓴다 → **`box-shadow` glow / 이동 발광 `div`**로 대체하거나 **축소**(밀도 주의). 발광이 꼭 필요하면 스파인만 별도 SVG 오버레이로 재도입하는 안도 있음(트레이드오프 §8.2).
+   - **선 머리 발광**: CSS 마디에는 SVG `linearGradient` 스트로크를 못 쓴다 → **[구현 반영] 마지막 노드에 `box-shadow` glow + 링 채택**(`useMotionTemplate`으로 gap/ring/glow 다층 box-shadow 조립, `latched`로 반경·번짐 애니). SVG 오버레이 재도입은 하지 않음.
    - `useScroll({ target: 섹션 ref, offset })`로 진행도 확보(Approach와 동일 훅, sticky 불필요).
 2. **마일스톤 노드 등장**
    - 각 노드(점 + 카드)는 선이 그 지점에 닿을 즈음 **등장**: 점이 accent로 채워지고 카드가 **페이드+살짝 슬라이드**.
 3. **선끝이 닿는 노드를 "현재"로 강조 (새 연습)**
-   - 그려지는 **선 머리가 지나가는 노드**를 active로: 점이 커지거나 빛나고 카드가 살짝 부각, 지나간 노드는 톤 정리.
-   - 진행도(`scrollYProgress`)를 **노드별 구간(threshold)**에 매핑해 active 계산. → **2번(노드 등장)도 threshold로 통합**하는 게 자연스럽다(둘 다 같은 스크롤 위치 기반, §8).
+   - 그려지는 **선 머리가 지나가는 노드**를 active로: 점이 커지거나 빛나고 카드가 살짝 부각.
+   - **[구현 반영] 2번(노드 등장)과 3번(강조)을 `latched` 진행도 구간(threshold)으로 통합.** 노드별 `seg`(=마디 구간)에 opacity/scale/box-shadow를 매핑 → 선이 닿는 타이밍과 등장·강조가 자동 동기. (마디 스케줄 상세 `WORK_LOG.md`.)
 4. **마지막 "융합형" 노드 색 와이프 (확정)**
-   - `CSS_ADVANCED.md` §5의 `background-clip: text` **왼→오 와이프**를 재활용해 "융합형"을 강조. 서사적 마침표이자 Approach 색 강조와 통일감.
+   - `CSS_ADVANCED.md` §5의 `background-clip: text` **왼→오 공간 와이프**(§5.2~5.6)를 재활용해 "융합형"을 강조. 마지막 노드 도달 구간(`seg`)에 물려 글로우·링과 같은 타이밍. 서사적 마침표이자 Approach와 통일감.
+   - **[구현 반영] 처음엔 Approach를 따라 `color-mix` 균일 페이드(§5.7)로 넣었다가 좌→오 공간 와이프로 변경 확정.** 폴백: 모바일 solid accent, reduced 시 accent 완성 고정, `text-transparent` 미지원/미적용 시 글자 안 보임 방지(§5.3·5.6).
 5. **카드 hover/tap 마이크로 인터랙션 (새 연습)**
    - `whileHover`(살짝 떠오름/보더 accent), `whileTap`(살짝 눌림). 카드가 "볼 만하다/누를 만하다"는 촉각 신호.
    - **포인터 전용**이므로 hover로만 정보를 숨기지 말 것(§5).
@@ -82,8 +83,9 @@
 ## 4. 반응형 (모바일 우선)
 
 - **공통(기본=모바일)**: **단일 컬럼**. 왼쪽 스파인 선, 오른쪽 노드 카드 세로 스택.
-- **데스크탑(md+)**: (A) 좌측 선 + 우측 카드 단일 컬럼(단순) vs (B) 중앙 선 + 좌우 교차 카드(전형적, 난이도↑) — §8.
-- 선 그리기·노드 강조 로직은 폭과 무관(좌표만 다름). 모바일은 스크롤 연동 유지하되 **발광 등 장식은 축소 가능**. hover는 터치에서 사실상 tap → `whileTap` 위주.
+- **레이아웃 [확정] (A) 좌측 선 + 우측 카드 단일 컬럼** — 데스크탑·모바일 공통(중앙 교차 B는 미채택).
+- **[구현 반영] 스크롤 구동은 데스크탑만 sticky pin** — 키 큰 래퍼(`md:h-[250vh]`) + 내부 `md:sticky md:top-0 md:h-screen`, `useScroll` `target`은 래퍼. **pin 요소는 1화면에 들어와야**(넘으면 잘림) → **모바일은 pin 없이 별도**(`md:` 분기, 애니 드라이버 미정: `whileInView` 등). 상세 `WORK_LOG.md`.
+- 선 그리기·노드 강조 로직은 폭과 무관(좌표만 다름). hover는 터치에서 사실상 tap → `whileTap` 위주.
 
 ---
 
@@ -124,11 +126,15 @@
 
 ---
 
-## 8. 아직 열린 결정 (구현 전/중 확정)
+## 8. 남은 작업 (구현 상태)
 
-1. **[확정]** 레이아웃 = 데스크탑·모바일 모두 **(A) 좌측 선 단일 컬럼**(왼쪽 스파인 + 오른쪽 카드).
-2. **선 머리 발광 방식**(3단계): 스파인이 CSS 마디라 `linearGradient` 스트로크 불가 → **`box-shadow` glow** vs **팁 추적 발광 `div`** vs **발광 생략** 중 택. *(당초 "발광 때문에 SVG 확정, scaleY div 제외"는 철회 — 정렬 문제로 CSS 마디 `scaleY` 채택, §3.1.)*
-3. **노드 등장 + 선끝 강조 구동**(3단계): 둘을 **진행도 threshold로 통합**(권장) vs 등장은 `whileInView` once + 강조만 threshold. (통합이 스크롤 위치 일관성 有)
-4. **[확정]** 마일스톤 **4개**, 연도 허수(3000/3002/3004/3005), 문구는 §2 표대로.
-5. **hover 세부**(3단계): lift 정도·보더 처리, `whileTap` 유무, 터치기기 대체 동작.
-6. **[확정]** 네비 라벨 **`Road`**(`#journey`) — `Header.tsx`·`CLAUDE.md` 반영 완료.
+> 확정된 결정(레이아웃 A·마일스톤 4개·네비 `Road`·발광 box-shadow·노드 등장/강조 통합)은 본문(§1~§4)에 반영됨. 아래는 **남은 작업**만.
+
+**완료**: 마크업/스타일, 스크롤 선 그리기(데스크탑 sticky), 노드 등장(첫 노드 포함), 마지막 노드 글로우+링.
+
+**진행/남음**:
+- **⑤ 융합형 색 와이프** — `color-mix` 페이드 → 좌→오 공간 와이프로 교체 중(§3.4, `CSS_ADVANCED.md` §5). 폴백(모바일 solid accent / reduced 고정 / `text-transparent` 안전장치)까지.
+- **⑥ 카드 hover/tap** — 미착수(`whileHover`/`whileTap`, §3-5·§5). 포인터 전용, hover로 정보 은닉 금지.
+- **⑦ reduced-motion 전체 정지형** — 지금 **색(--mix)만** 가드됨. **선(scaleY)·노드(opacity)·scale·box-shadow는 아직 스크롤 구동** → `useReducedMotionSafe`로 "선 다 그려짐 + 노드 다 보임 + 융합형 accent 완성" 고정 필요(§3 접근성).
+- **모바일 애니 드라이버** — sticky는 `md:`만. pin 없는 모바일에서 선/노드를 어떻게 구동할지 미정(`whileInView` 등, §4).
+- **경미 정리**: 마지막 `item.title` 중복(JSX 하드코딩), 하드코딩 구간을 `seg`로 통일, 주석 잔여물.
