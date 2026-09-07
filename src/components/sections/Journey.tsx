@@ -3,6 +3,7 @@
 import { useMotionValue, useMotionValueEvent, useScroll } from "framer-motion";
 import FadeIn from "../motion/FadeIn";
 import { useRef } from "react";
+import JourneyItem from "./JourneyItem";
 
 const journeyTrack = [
   {
@@ -29,9 +30,10 @@ const journeyTrack = [
 
 export default function Journey() {
   const targetRef = useRef(null);
-  const {scrollYProgress} = useScroll({
-    
-  })
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start start", "end end"],
+  });
 
   const latched = useMotionValue(0);
   useMotionValueEvent(scrollYProgress, 'change', (v) =>{
@@ -42,10 +44,11 @@ export default function Journey() {
 
   return (
     <section id="journey"
-      className="relative flex min-h-screen flex-col gap-nav container-page pt-32 pb-canvas md:pt-[15rem]"
+      className="relative flex min-h-screen flex-col gap-nav container-page pt-32 pb-canvas md:h-[100rem] md:pt-[15rem]"
       ref={targetRef}
     >
-      <FadeIn>
+      <div  className="md:sticky md:top-20">
+        <FadeIn>
           <div className="flex items-end justify-between">
             <div className="flex flex-col gap-element">
               <span className="font-code text-sm text-accent">{'// JOURNEY'}</span>
@@ -58,26 +61,16 @@ export default function Journey() {
             <ol className="flex flex-col">
               {journeyTrack.map((item, index) => {
                 return (
-                  <li
-                    key={index}
-                    className="flex md:gap-[3.3rem] gap-[1.12rem]"
-                  >
-                    <div className="flex flex-col items-center">
-                      <div className={`w-[2px] flex-1 ${index === 0 ? 'bg-transparent' : 'bg-accent'}`}></div>
-                      <div className={`size-[1rem] rounded-full bg-accent ${index === journeyTrack.length-1 ? 'scale-[1.2] ring-2 ring-accent ring-offset-4 ring-offset-bg' : ''}`}></div>
-                      <div className={`w-[2px] flex-1 ${index === journeyTrack.length-1 ? 'bg-transparent' : 'bg-accent'}`}></div>
-                    </div>
-                    <div className="flex flex-col py-[2.35rem] md:py-[1.75rem]">
-                      <span className="font-code text-accent text-[0.8125rem] md:text-sm">{item.year}</span>
-                      <h3 className="font-korean font-semibold text-lg md:text-2xl">{item.title}</h3>
-                      <span className="font-korean text-secondary text-sm md:text-base">{item.desc}</span>
-                    </div>
-                  </li>
+                  <JourneyItem
+                  key={index} item={item}
+                    latched={latched} index={index} length={journeyTrack.length}
+                  />
                 )
               })}
             </ol>
           </div>
         </div>
+      </div>
     </section>
   );
 }
