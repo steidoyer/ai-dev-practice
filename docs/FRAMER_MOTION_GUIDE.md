@@ -410,6 +410,23 @@ const y = useTransform(scrollYProgress, [0, 1], [0, -200]) // 스크롤에 따�
 
 > 요령: `useScroll`/`useTransform` 값은 `animate`가 아니라 **`style`에 꽂는다**(리렌더 없이 매 프레임 갱신).
 
+### 3.0 MotionValue란 — `useScroll`이 숫자가 아니라 "객체"를 주는 이유
+
+`useScroll()`이 돌려주는 `scrollYProgress`는 **숫자(0~1)가 아니라 `MotionValue`라는 객체**다. `useScroll()`의 반환은 `{ scrollX, scrollY, scrollXProgress, scrollYProgress }`이고 **넷 다 MotionValue**다. 일부러 이렇게 만든 것으로, 이유는 **성능(React 리렌더 회피)**.
+
+- **숫자였다면 매 프레임 리렌더**: 스크롤은 초당 수십 번 값이 바뀐다. 값이 숫자여서 바뀔 때마다 컴포넌트가 리렌더되면 스크롤 내내 고빈도 리렌더 → 성능 파탄.
+- **MotionValue = 리렌더 없이 값이 바뀌는 "가변 컨테이너"**: 값이 그 안에서 조용히 바뀌고 **React 렌더 사이클을 건너뛴다.** `style`에 꽂으면 framer가 구독해 **DOM에 직접** 값을 쓴다(재조정 없음). → 부드러움의 핵심.
+- **스냅샷이 아니라 "스트림"**: 숫자는 한 시점의 값 하나지만, MotionValue는 **살아있는 값 + 구독 시스템**(`.get()`, `.on('change')`, `useMotionValueEvent`)이며 `useTransform`/`useSpring`으로 **다른 MotionValue로 가공·연결**된다. 즉 "읽는 값"이 아니라 **"흘려보내는 파이프 소스"**.
+
+**소비하는 3가지 방법** (렌더 안에서 숫자로 읽지 않는다):
+1. **파이프로 연결(권장)** — `style={{ scaleY: mv }}` 또는 `useTransform(scrollYProgress, [..], [..])`에 그대로 꽂기. 리렌더 0.
+2. **스냅샷 꺼내기** — `scrollYProgress.get()`으로 **현재 숫자**를 읽음(이벤트·핸들러 안에서. §3.2의 `latched.get()`이 이 경우).
+3. **변화 감지** — `useMotionValueEvent(scrollYProgress, 'change', v => …)` — 콜백의 **`v`가 숫자**(현재 값). 진행도 확인용 `console.log(v)`가 여기 해당.
+
+> **컨테이너 ↔ 안의 숫자를 구분**하면 헷갈림이 풀린다: `scrollYProgress`(MotionValue 객체) vs `v`/`.get()`(그 안의 숫자). 렌더에서 숫자가 꼭 필요해 `useMotionValueEvent`로 `setState`하면 리렌더가 되살아나므로, 성능 민감한 경로에선 피하고 1번(파이프)으로 간다.
+>
+> 관련: §3.1(값 구동 — style에 MotionValue), §3.2(latched·`.get()`·`useMotionValueEvent`), §5.6(리렌더 vs MotionValue).
+
 ### 3.1 두 가지 구동 방식 — 선언형 vs 값 구동 (한 속성엔 드라이버 하나)
 
 framer-motion에서 하나의 속성(예: `x`, `opacity`)을 움직이는 길은 **성격이 다른 두 시스템**이 있다. 이 둘을 헷갈리면 "같은 속성을 두 번 지정해서 서로 밀어내는" 버그가 생긴다.
@@ -525,6 +542,24 @@ Approach에서 예전에 whileInView가 "원이 떨어진 채로 보여서 안 �
 
 즉 "스크럽이냐 시간이냐"는 라이브러리 기능 문제가 아니라 **섹션이 사용자에게 무엇을 시키고 싶은가**의 문제다. (관련: §3.1 드라이버 하나, §3.2 latched, 결정 배경 `STICKY_SESSION_NOTE.md`.)
 
+### 3.4 `useMotionTemplate` — 여러 MotionValue를 "문자열 CSS"로 합치기
+
+`useTransform`은 **숫자 하나**를 다른 숫자/객체로 매핑한다. 그런데 `box-shadow`·`filter`·`background`·`clip-path`처럼 **값이 문자열인 CSS 속성**은 숫자 매핑만으로는 못 만든다(예: `box-shadow: 0 0 0 8px …`의 `8px` 부분만 숫자로 바꾸고 나머지는 문자열). 이럴 때 **여러 MotionValue·숫자·문자열을 하나의 문자열 MotionValue로 조립**하는 것이 `useMotionTemplate`이다.
+
+- **형태(태그드 템플릿)**: 함수 호출 괄호가 아니라 **백틱**을 바로 붙인다. 반환은 `MotionValue<string>`.
+  ```tsx
+  const spread = useTransform(latched, [0.8, 1], [0, 8])        // 숫자 MotionValue (px 값)
+  const boxShadow = useMotionTemplate`0 0 0 ${spread}px var(--color-accent)`
+  return <motion.div style={{ boxShadow }} />                    // 문자열 MotionValue를 style에 연결
+  ```
+  - 스크롤이 진행되면 `spread`가 0→8로 바뀌고, `boxShadow` 문자열이 매 프레임 다시 조립돼 **후광 반경이 퍼진다**.
+- **보간 규칙**: `${}` 안에는 **`MotionValue` | 숫자 | 문자열**을 넣는다. 단위(`px`·`%`)나 함수(`rgba(...)`)는 **템플릿의 고정 문자열**로 적고, 변하는 숫자만 MotionValue로 뺀다. (`${spread}px`처럼 값과 단위를 분리.)
+- **왜 `useTransform`으로 안 되나**: `useTransform`의 출력은 숫자(또는 숫자 객체)라 `box-shadow` 같은 **복합 문자열**을 못 만든다. 문자열 조립은 `useMotionTemplate`의 몫. 반대로 숫자→숫자는 `useTransform`이 맞다(둘을 조합: 숫자는 `useTransform`, 문자열화는 `useMotionTemplate`).
+- **성능 주의(§5.2)**: `box-shadow`·`filter` 애니메이션은 `transform`/`opacity`보다 무겁다(매 프레임 페인트). "요소가 커지는 느낌"이면 `scale`(transform)이 가볍고, **후광 반경이 실제로 퍼지는** 효과가 꼭 필요할 때만 `box-shadow`+`useMotionTemplate`을 쓴다. 남발 금지.
+- **정적 유틸과 겹치지 말 것**: `style`로 `boxShadow`를 구동하면 Tailwind `ring-*`/`shadow-*`(정적 box-shadow) 클래스는 **제거**한다(같은 속성 충돌).
+
+> `import { useMotionTemplate } from "framer-motion"`. 관련: §3.0(MotionValue), §3.1(값 구동 — style에 MotionValue), §5.2(성능).
+
 ---
 
 ## 4. 실무 사용 예시 (일반 패턴)
@@ -634,6 +669,16 @@ const image = { rest: { scale: 1 }, hover: { scale: 1.05 } }
 
 - `initial`을 안 주면 서버 렌더 결과와 최종 상태가 달라 깜빡일 수 있다. 등장 애니메이션엔 `initial`을 명시.
 - **reduced-motion 분기로 인한 불일치**: framer `useReducedMotion()`을 render 출력 분기에 쓰면 서버(false)/클라(true)가 달라 **하이드레이션 불일치**가 난다. → §5.3의 `useReducedMotionSafe`/`MotionConfig`로 해결. (원인·범위 `NEXTJS_GUIDE.md` §5.6)
+
+### 5.8 Tailwind v4 `scale`/`rotate`/`translate` 클래스와 framer `style` 겹침 (덮이지 않고 곱해진다)
+
+framer로 `scale`(또는 `x`/`y`/`rotate`)을 `style`로 구동할 때, **정적 Tailwind 변형 클래스를 같이 두면 서로 덮어쓰지 않고 합성(곱)** 되어 예측이 어긋난다.
+
+- **원인 — 서로 다른 CSS 속성**: Tailwind v4는 `scale-[1.2]`를 **개별 CSS 속성 `scale:`** 로 내보낸다(`scale: var(--tw-scale-x) var(--tw-scale-y)`; 소스 확인). framer의 `style={{ scale }}`는 **`transform:` 속성**(`transform: scale(...)`)으로 적용한다. CSS 규격상 `scale`·`translate`·`rotate`(개별 longhand)와 `transform`은 **별개 속성이라 둘 다 적용(합성)** 된다 → **override가 아니라 곱셈**.
+- **증상**: 정적 `scale-[1.2]` + framer `scale`(1→1.2)이면 실제 배율은 `1.2×1=1.2` → `1.2×1.2=1.44`. 정적 1.2가 **baseline으로 안 사라져** framer 값만으로 1까지 못 내려가고, "framer scale이 안 먹는다"처럼 보인다(실은 곱해지는 중).
+- **해결**: 한 속성은 **한 곳에서만** 구동. framer로 애니메이트하면 **정적 변형 클래스(`scale-*`/`translate-*`/`rotate-*`) 제거**. 반대로 정적이면 framer `style`에서 빼기.
+- **확인법(DevTools)**: 대상 요소 Computed 패널에서 **`scale`과 `transform`이 둘 다** 잡혀 있으면 겹친 것.
+- (같은 `transform`끼리라면 inline(framer)이 클래스를 이기지만, v4가 `scale`을 개별 속성으로 빼면서 이 "곱셈 겹침"이 생긴다. `opacity` 등 비-변형 속성은 해당 없음.)
 
 ---
 
