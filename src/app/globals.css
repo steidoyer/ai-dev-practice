@@ -110,3 +110,15 @@ body {
   var(--color-primary),
   var(--color-accent) calc(var(--mix) * 100%));
 }
+
+@utility text-accent-color-wipe {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  background-image: linear-gradient(
+    to right,
+    var(--color-accent) calc(var(--wipe) * 100%),
+    var(--color-primary) calc(var(--wipe) * 100%)
+  );
+}
