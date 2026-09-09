@@ -409,6 +409,7 @@ const y = useTransform(scrollYProgress, [0, 1], [0, -200]) // 스크롤에 따�
 ```
 
 > 요령: `useScroll`/`useTransform` 값은 `animate`가 아니라 **`style`에 꽂는다**(리렌더 없이 매 프레임 갱신).
+> 훅별 상세(문법·매개변수·역할·예시·주의)는 §3.4 `useTransform` · §3.5 `useMotionTemplate` · §3.6 `useMotionValue` · §3.7 `useMotionValueEvent` · §3.8 `useScroll`.
 
 ### 3.0 MotionValue란 — `useScroll`이 숫자가 아니라 "객체"를 주는 이유
 
@@ -487,6 +488,8 @@ framer-motion에서 하나의 속성(예: `x`, `opacity`)을 움직이는 길은
 - `useMotionValue`·`useMotionValueEvent`는 훅 → **컴포넌트 최상위**에서 호출(`map`/조건 안 금지).
 - **초기 진입 엣지케이스**: 아래 섹션에서 스크롤을 올려 이 섹션에 진입하면, 첫 `change`에서 `scrollYProgress`가 이미 커서 `latched`가 확 튀어 **애니메이션이 중간/끝부터** 보일 수 있다. 위→아래 정상 흐름에선 0부터라 문제없다.
 
+> **reduced-motion 가드에 응용 (근원 가드)**: `latched`가 값 구동의 **단일 입력**이므로, reduced면 이 값을 **끝값(1)으로 고정**하면 그걸 입력으로 쓰는 모든 `useTransform`이 자동으로 **최종형(정지 완결)**을 낸다 — 속성마다 `reduce ? 최종 : mv`로 분기(**잎마다 가드**)하는 것보다 **한 곳만** 손대면 되고 빠뜨림이 없다. 훅은 조건부 호출 금지라 `useScroll`/`useMotionValueEvent`는 그대로 두고 **값만** effect에서 1로 세팅(단조 핸들러가 `v>get()`이라 1을 유지). 단 **latched 밖의 모션**(hover 등)과 **레이아웃 높이**(`reduce ? 'md:h-auto' : …`)는 별도 가드. (근원 vs 잎 판단 배경 → `AI_COLLAB_NOTES.md`.) ⚠️ Approach는 현재 잎마다 가드(B)로 되어 있어, 이 근원 가드(A)로 리팩터링 예정.
+
 배경·A/B 트레이드오프·결정 경위는 `STICKY_SESSION_NOTE.md`("A vs B(스크롤 되감김)" 절), 확정 스펙은 `SECTION_APPROACH_PLAN.md` §3.2. **"코드는 latched인데 되감긴다"** 처럼 코드와 안 맞는 증상이면 §7 이전에 stale 번들(`NEXTJS_GUIDE.md` §7.1)을 먼저 의심할 것.
 
 ### 3.3 값 구동(스크럽) vs 시간 구동 — 언제 무엇을 고르나
@@ -520,7 +523,7 @@ Approach에서 예전에 whileInView가 "원이 떨어진 채로 보여서 안 �
 | 중간에서 멈춤 | 반쯤 합쳐진 채 정지 → 스틸컷처럼 예쁠 수도, 어중간할 수도(중간 포즈가 늘 봐줄 만해야) | 멈춰도 끝까지 완주 |
 | 다시 위로 스크롤 | latch면 최고 상태 유지 | once면 유지 — **차이 없음** |
 | 바닥에서 새로고침 | latch면 완성 표시 | once면 이미 뷰라 완성 표시 — **차이 없음** |
-| reduced-motion | 스크롤 바인딩을 꺼야 해 손이 더 감 | 가드 간단(최종 정지형만 렌더) |
+| reduced-motion | 드라이버(`latched`)를 **끝값 1로 고정**하면 파생값이 전부 최종형 → **한 곳만 가드**(§3.2) | 가드 간단(최종 정지형만 렌더) |
 
 **비용 측면**
 
@@ -542,7 +545,84 @@ Approach에서 예전에 whileInView가 "원이 떨어진 채로 보여서 안 �
 
 즉 "스크럽이냐 시간이냐"는 라이브러리 기능 문제가 아니라 **섹션이 사용자에게 무엇을 시키고 싶은가**의 문제다. (관련: §3.1 드라이버 하나, §3.2 latched, 결정 배경 `STICKY_SESSION_NOTE.md`.)
 
-### 3.4 `useMotionTemplate` — 여러 MotionValue를 "문자열 CSS"로 합치기
+### 3.4 `useTransform` 오버로드 4형태 — 범위 매핑 vs 함수형
+
+`useTransform`은 **한 MotionValue를 다른 MotionValue로 가공**하는 훅이다(파이프 개념 §3.0). 오버로드가 4개인데, **셋째 인자의 모양**과 **함수를 넘기느냐**로 갈린다. (시그니처 출처: `node_modules/framer-motion/dist/index.d.ts:1144·1193·1213·1233`.)
+
+**기본형 — 한 범위를 다른 범위로 매핑**
+```tsx
+const y = useTransform(scrollYProgress, [0, 1], [0, -200])
+// 진행도 0→1 을 y 0→-200 으로 선형 매핑. style={{ y }} 로 연결.
+```
+
+#### 매개변수 역할 (공통)
+| 인자 | 이름 | 뜻 |
+|---|---|---|
+| 1 | `value`(입력) | 가공할 원본 MotionValue (예: `latched`) |
+| 2 | `inputRange` | **입력 구간** — 늘 숫자 배열 `[a, b, …]`, 단조(증가 또는 감소) |
+| 3 | `outputRange` **또는** `outputMap` | **출력** — 이 자리 모양이 형태를 가른다(아래) |
+| 4 | `options?` | 선택. `clamp`(기본 `true`)·`ease`. **생략 가능** |
+
+#### 질문의 핵심: 셋째 인자가 배열이냐 객체냐 (인자 3개/4개가 아님)
+
+두 호출의 진짜 차이는 **인자 개수가 아니라 셋째 인자의 타입**이다. `options`(넷째)는 **양쪽 다 생략 가능**하므로 개수는 곁가지다.
+
+```tsx
+// A. 셋째가 '배열' → 단일 출력값 하나            (index.d.ts:1193)
+useTransform(latched, seg, [0, 1], {})
+//           value   input  output  options(생략가능)
+//  → MotionValue<number> 하나. seg 구간을 0~1 로 매핑.
+
+// B. 셋째가 '객체' → 여러 개의 이름붙은 출력      (index.d.ts:1144)
+useTransform(latched, [0, 1], { x: [-100, 0], opacity: [0, 1] })
+//           value   input   outputMap
+//  → { x: MotionValue, opacity: MotionValue }  (객체로 분해해 각각 style에)
+```
+
+- **A (outputRange 배열)**: 결과가 **MotionValue 하나**. `lineTop`·`textColor`처럼 한 속성만 몰 때.
+- **B (outputMap 객체)**: 한 입력에서 **여러 값을 한꺼번에** 파생. 결과는 **같은 키의 객체**(`{x, opacity}`)라 `style={card}`처럼 통째로 꽂거나 `const { x, opacity } = …`로 분해. 이 프로젝트의 `card`·`dot`이 이 형태.
+- **헷갈림 포인트**: A의 `seg`도, B의 `[0,1]`도 똑같이 **둘째 인자 = `inputRange`**다. A는 그 자리에 변수(`seg = [a,b]`)를, B는 리터럴(`[0,1]`)을 썼을 뿐 — 형태를 가르는 건 **둘째가 아니라 셋째**.
+- ⚠️ B의 **`outputMap` 키는 렌더마다 고정**이어야 한다(조건부로 키를 넣다 뺐다 하면 안 됨 — 타입 정의 주석에 명시).
+
+#### 함수형 — 셋째 인자 대신 '함수'를 넘긴다 (index.d.ts:1213)
+
+범위 매핑이 아니라 **직접 계산**하고 싶을 때, 둘째 인자로 **변환 함수(transformer)**를 넘긴다.
+
+```tsx
+const y = useTransform(x, (value) => value * 2)   // y 는 늘 x 의 2배
+```
+
+- **콜백이 받는 값**: `input`(첫 인자 MotionValue)의 **현재 값**이 매번 콜백 인자로 들어온다. 위에선 `value`, 우리 코드에선 `v` — **이름은 자유**(그냥 매개변수명), 뜻은 "**지금 이 순간 `latched`의 숫자**". 입력이 바뀔 때마다 함수가 다시 실행돼 그 반환값이 새 MotionValue가 된다.
+- **범위 매핑과의 차이**: 매핑형은 두 범위 사이를 **연속 보간**(중간값 다 나옴 — *밝기 조절기*). 함수형은 **작성한 대로** — 조건 분기로 **딱 둘 중 하나**만 낼 수도 있다(*온도조절기*: 기준 넘으면 켜짐/꺼짐, 중간 없음).
+
+```tsx
+// 이산(기준값) 출력 예 — Journey: 카드가 다 등장하기 전엔 hover 차단
+const pointerEvents = useTransform(latched, (v) => v >= appear[1] ? 'auto' : 'none')
+// v(현재 진행도)가 등장완료 지점(appear[1]) 미만 → 'none'(마우스 통과), 이상 → 'auto'.
+//  style={{ pointerEvents }} 로 연결. (opacity:0 은 포인터를 안 막으므로 pointer-events가 정답.)
+```
+
+- **다중 입력 함수형**(index.d.ts:1233): 여러 MotionValue를 합칠 땐 **배열**로 넣고 콜백이 배열을 받는다 — `useTransform([x, y], ([lx, ly]) => lx * ly)`.
+
+#### options — `clamp` / `ease` (범위 매핑형에만)
+- `clamp`(기본 **`true`**): 입력이 `inputRange`를 벗어나면 출력을 **끝값에 고정**. `false`면 범위 밖으로 **외삽**(계속 늘어남).
+- `ease`: 각 구간 보간에 이징 적용(입력 구간이 n개면 이징 배열은 n-1개).
+- 함수형엔 options가 없다 — 반환값을 함수가 전부 정하니까.
+
+#### 주의사항
+- **훅**이라 컴포넌트 **최상위**에서만 호출 — `.map()`/조건문/반복문 안에서 호출 금지(훅 순서 규칙). 항목마다 값을 파생하려면 **자식 컴포넌트로 분리**해 각자 최상위에서 호출(이 프로젝트 `JourneyItem` 패턴 → `DEV_QNA.md` "map 안 useTransform").
+- `inputRange`는 **단조**(증가 또는 감소)여야 한다. 뒤죽박죽이면 보간이 깨진다.
+- `outputRange`의 값들은 **전부 같은 타입·형식**(전부 숫자, 또는 전부 색 등). 색은 `var(--…)` 문자열 말고 **실제 색값**을 줘야 보간된다(`CSS_ADVANCED.md` §5.1).
+- `outputMap`(객체형) 키는 **렌더마다 고정**.
+
+#### 기타
+- `import { useTransform } from "framer-motion"`.
+
+> 시그니처 출처: `index.d.ts:1144`(outputMap)·`1193`(outputRange)·`1213`(함수형 단일)·`1233`(함수형 다중). 관련: §3.0(MotionValue), §3.1(값 구동), §3.5(문자열 조립은 `useMotionTemplate`).
+
+---
+
+### 3.5 `useMotionTemplate` — 여러 MotionValue를 "문자열 CSS"로 합치기
 
 `useTransform`은 **숫자 하나**를 다른 숫자/객체로 매핑한다. 그런데 `box-shadow`·`filter`·`background`·`clip-path`처럼 **값이 문자열인 CSS 속성**은 숫자 매핑만으로는 못 만든다(예: `box-shadow: 0 0 0 8px …`의 `8px` 부분만 숫자로 바꾸고 나머지는 문자열). 이럴 때 **여러 MotionValue·숫자·문자열을 하나의 문자열 MotionValue로 조립**하는 것이 `useMotionTemplate`이다.
 
@@ -559,6 +639,162 @@ Approach에서 예전에 whileInView가 "원이 떨어진 채로 보여서 안 �
 - **정적 유틸과 겹치지 말 것**: `style`로 `boxShadow`를 구동하면 Tailwind `ring-*`/`shadow-*`(정적 box-shadow) 클래스는 **제거**한다(같은 속성 충돌).
 
 > `import { useMotionTemplate } from "framer-motion"`. 관련: §3.0(MotionValue), §3.1(값 구동 — style에 MotionValue), §5.2(성능).
+
+---
+
+### 3.6 `useMotionValue` — 리렌더 없이 갱신되는 값 그릇
+
+#### 기본 문법
+```tsx
+import { useMotionValue } from "framer-motion"
+const x = useMotionValue(0)     // 초깃값 0
+```
+
+#### 매개변수 / 반환
+| | 이름 | 뜻 |
+|---|---|---|
+| 인자 | `initial: T` | 초깃값(숫자·문자열·색 등). 이 타입이 그대로 `MotionValue<T>`가 됨 |
+| 반환 | `MotionValue<T>` | 리렌더 없이 값이 바뀌는 "가변 컨테이너" |
+
+(시그니처: `index.d.ts:1033` — `useMotionValue<T>(initial: T): MotionValue<T>`.)
+
+#### 역할
+값을 **React state 밖**에 두어, 값이 바뀌어도 **컴포넌트를 리렌더하지 않고** DOM·파이프에 직접 흘린다. 스크롤·드래그·마우스처럼 초당 수십 번 바뀌는 고빈도 값에 쓴다. `useScroll`이 돌려주는 것도 내부적으로 이것(§3.0).
+
+#### MotionValue 주요 메서드 (반환 객체가 가진 것)
+| 메서드 | 뜻 |
+|---|---|
+| `.get()` | 현재 값(숫자 등) 읽기 |
+| `.set(v)` | 값 쓰기(렌더 구독자에 통지) |
+| `.jump(v)` | 값 쓰되 **진행 중 애니메이션 중단 + 속도 0** |
+| `.getPrevious()` | 직전 값 |
+| `.getVelocity()` | 현재 속도(숫자 아니면 0) |
+| `.on('change', cb)` | 변화 구독(해제 함수 반환) — 훅에선 `useMotionValueEvent`(§3.7)가 정리까지 대신함 |
+
+#### 예시 — latched(도달 최댓값) 그릇
+```tsx
+const latched = useMotionValue(0)
+useMotionValueEvent(scrollYProgress, 'change', (v) => {
+  if (v > latched.get()) latched.set(v)   // 더 클 때만 → 단조 증가(되감김 없음, §3.2)
+})
+```
+
+#### 주의사항
+- **훅**이라 컴포넌트 **최상위**에서만 호출(`map`/조건/반복문 안 금지 — 훅 순서 규칙). 항목마다 값이 필요하면 **자식 컴포넌트로 분리**(이 프로젝트 `JourneyItem` → `DEV_QNA.md`).
+- `.set()`은 **렌더 중에 호출하지 말 것**(effect·이벤트 콜백·프레임 콜백에서). 렌더 중 값 변경은 버그.
+- 렌더에 **숫자 자체가 필요**해 `useMotionValueEvent`+`setState`를 쓰면 **리렌더가 되살아난다** → 성능 경로에선 파이프(`style`/`useTransform`)로(§3.0·§5.6).
+- 초깃값 타입이 곧 값 타입 — 숫자 그릇에 문자열 넣지 말 것.
+
+#### 기타
+한 MotionValue는 **한 번에 하나의 애니메이션**만 구동 가능(타입 정의 주석). 관련: §3.0(왜 객체인가)·§3.2(latched)·§3.7(변화 구독).
+
+---
+
+### 3.7 `useMotionValueEvent` — MotionValue 이벤트 구독(자동 정리)
+
+#### 기본 문법
+```tsx
+import { useMotionValueEvent } from "framer-motion"
+useMotionValueEvent(scrollYProgress, 'change', (latest) => {
+  console.log(latest)   // latest = 현재 숫자값
+})
+```
+
+#### 매개변수 / 반환
+| 인자 | 이름 | 뜻 |
+|---|---|---|
+| 1 | `value` | 구독할 MotionValue |
+| 2 | `event` | 이벤트 이름(아래 표 중 하나) |
+| 3 | `callback` | 이벤트 발생 시 실행. `'change'`면 **현재 값**을 인자로 받음 |
+| 반환 | `void` | 구독 해제는 **언마운트 시 자동** |
+
+(시그니처: `index.d.ts:970`.)
+
+#### 이벤트 종류 (`MotionValueEventCallbacks`, motion-dom `index.d.ts:2403`)
+| 이벤트 | 콜백 | 언제 |
+|---|---|---|
+| `change` | `(latest) => void` | 값이 바뀔 때(가장 흔함) |
+| `animationStart` | `() => void` | 이 값 구동 애니메이션 시작 |
+| `animationComplete` | `() => void` | 애니메이션 완료 |
+| `animationCancel` | `() => void` | 애니메이션 취소 |
+| `destroy` | `() => void` | MotionValue 파기 |
+
+#### 역할
+`motionValue.on(event, cb)`의 **훅 래퍼**. 직접 `.on()`을 쓰면 `useEffect`에서 **해제 함수를 반환해 정리**해야 하는데, `useMotionValueEvent`는 그 **구독+정리를 자동**으로 해준다. "스크롤 값이 바뀔 때 무언가 실행"의 표준 도구.
+
+#### 예시 — 도달 최댓값 latch (§3.2 실사용)
+```tsx
+useMotionValueEvent(scrollYProgress, 'change', (v) => {
+  if (v > latched.get()) latched.set(v)
+})
+```
+
+#### 주의사항
+- 콜백이 **`setState`를 부르면 리렌더가 되살아난다.** 매 프레임 바뀌는 값(스크롤)에 남발하면 성능 파탄 → 값을 화면에 흘리는 게 목적이면 `useTransform`/`style` 파이프로(§3.0·§5.6). 이건 **로직 분기·로깅·latch**처럼 "값을 읽어 판단"할 때 쓴다.
+- **훅**이라 최상위 호출(§3.6과 동일).
+- 콜백의 클로저가 옛 값을 잡을 수 있다 — latch처럼 `.get()`으로 **그때그때 읽으면** 안전.
+- HMR 함정: MotionValue 구독을 빠르게 반복 편집하면 **옛 구독이 남을 수 있음** → 이상하면 새로고침(`NEXTJS_GUIDE.md`).
+
+#### 기타
+내부적으로 `.on()`(motion-dom `index.d.ts:2543`)을 호출하고 언마운트에서 해제. 관련: §3.0(MotionValue 소비 3방식)·§3.2(latch)·§3.6(`useMotionValue`).
+
+---
+
+### 3.8 `useScroll` — 스크롤 진행도를 MotionValue로
+
+#### 기본 문법
+```tsx
+import { useScroll } from "framer-motion"
+
+const { scrollYProgress } = useScroll()               // 페이지 전체 세로 진행도 0~1
+
+// 또는 특정 요소 기준:
+const ref = useRef(null)
+const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] })
+```
+
+#### 매개변수 (옵션 객체, 전부 선택)
+| 옵션 | 타입 | 뜻 |
+|---|---|---|
+| `container` | `RefObject` | 스크롤 컨테이너. **생략 시 뷰포트(window)** |
+| `target` | `RefObject` | 진행도를 잴 **대상 요소**. 생략 시 컨테이너 자체의 스크롤 |
+| `offset` | `ScrollOffset` | 진행 0/1을 **어느 교차 지점**에 맞출지(아래 상세) |
+| `axis` | `"x" \| "y"` | 축. 기본 **`"y"`** |
+
+(시그니처: `index.d.ts:1039` — 옵션 타입 `UseScrollOptions`.)
+
+#### 반환 (넷 다 `MotionValue<number>`)
+| 값 | 뜻 |
+|---|---|
+| `scrollX` / `scrollY` | 스크롤 **픽셀** 위치 |
+| `scrollXProgress` / `scrollYProgress` | **진행도 0~1** (스크럽에 쓰는 값) |
+
+#### 역할
+스크롤 위치를 리렌더 없이 **MotionValue로** 흘려, `useTransform`으로 좌표·opacity·색 등에 매핑(§3.4)한다. `target` + `offset`을 주면 "그 요소가 화면을 지나가는 구간"을 **0~1로 정규화**해준다 → 이 프로젝트 스크럽·`latched`의 입력(§3.2).
+
+#### ⭐ `offset` — start/end의 기준
+`offset`은 **`[진행 0 지점, 진행 1 지점]`** 두 개의 "교차(intersection)"다. 각 교차는 **`"<대상 모서리> <컨테이너 모서리>"`** 두 토큰(공백 구분)으로 적는다.
+
+- **첫 토큰 = 대상(target)의 모서리**, **둘째 토큰 = 컨테이너(보통 뷰포트)의 모서리**.
+- 세로축(`y`)에서 `start` = **위 모서리(top)**, `end` = **아래 모서리(bottom)**, `center` = 가운데. (`px`·`%`·`vh` 숫자도 가능.)
+- 예: `"start end"` = "**대상의 위**가 **뷰포트의 아래**와 만나는 순간" = 요소가 화면 **아래에서 막 들어올 때**.
+
+**이 프로젝트 값 `["start start", "end end"]` 읽기**
+- `"start start"`(진행 0) = 대상의 **위**가 뷰포트의 **위**에 닿을 때 → 섹션 top이 화면 top에 온 순간.
+- `"end end"`(진행 1) = 대상의 **아래**가 뷰포트의 **아래**에 닿을 때 → 섹션 bottom이 화면 bottom에 온 순간.
+- 결과: 진행 0→1이 **(섹션 높이 − 뷰포트 높이)** 만큼의 스크롤에 매핑된다 → 그래서 스크럽엔 **긴 섹션 + sticky**가 필요(§3.2 · `SCROLL_MERGE_GUIDE.md`). 섹션이 뷰포트만 하면 이 거리가 ≈0이라 애니가 순간에 끝난다.
+
+자주 쓰는 다른 값:
+- `["start end", "end start"]` = 요소가 **화면에 처음 들어올 때 0 → 완전히 빠져나갈 때 1**. 요소가 뷰에 머무는 전 구간을 추적(패럴럭스에 흔함).
+
+#### 주의사항
+- `useScroll`은 **훅** → 컴포넌트 최상위에서 호출(§3.6과 동일).
+- `target` ref는 **실제 DOM에 붙어야** 진행도가 잡힌다(마운트 전엔 0).
+- 반환값은 `animate`가 아니라 **`style`/`useTransform`에 꽂는다**(리렌더 없이 매 프레임, §3.1).
+- 진입 엣지케이스(아래서 올라와 진입 시 `latched`가 튐)는 §3.2 주의 참고.
+
+#### 기타
+`import { useScroll } from "framer-motion"`. 관련: §3.0(왜 MotionValue인가)·§3.2(latched 입력)·§3.4(진행도→값 매핑)·`SCROLL_MERGE_GUIDE.md`(거리 확보·sticky).
 
 ---
 

@@ -114,3 +114,27 @@ export function useReducedMotionSafe() {
 
 ### origin
 - 마디 `scaleY`엔 **`origin-top`**(transform-origin: top) 필수 — 없으면 가운데서 늘어나 "위→아래로 이어지는" 그림이 안 남.
+
+## 모바일 스크럽이 "휘릭" 펴짐 → 드라이버를 뷰포트로 스왑 (스크롤 → 시간 재생)
+
+**대상**: `src/components/sections/Journey.tsx` + `src/hooks/useIsDesktop.ts`(신규)
+**맥락**: 데스크탑은 sticky pin으로 스크럽이 되는데, 모바일에선 선/노드가 순간에 다 펴져 애니가 안 느껴짐.
+
+### 원인 — 모바일은 "스크롤 거리"로 스크럽하기 어렵다
+- 스크럽 진행도(0→1)는 **(섹션높이 − 뷰포트높이)** 거리에 매핑된다(위 "스크럽…" 항목). 모바일은 섹션이 뷰포트 대비 그리 크지 않아 거리가 짧음 → 스냅.
+- 거리를 늘리려면 pin이 필요한데, pin은 "고정 내용이 **한 화면에 들어와야**" 성립. 모바일 타임라인(4항목)은 한 화면에 안 맞아 **pin 부적합**.
+
+### 해결 — `latched` 근원은 그대로, "무엇이 미느냐"만 뷰포트로 스왑
+- 파이프(useTransform: 선·노드·글로우·와이프)는 손대지 않고 `latched`의 **드라이버만** 가른다:
+  - **데스크탑**: 스크롤 최댓값 latch(기존), `if(isDesktop && v>get())`.
+  - **모바일**: `useInView`로 뷰 진입 시 `animate(latched, 1, {duration:1.8, ease:'easeOut'})` **시간 재생**(스크롤 거리 무관).
+  - **reduce**: `latched=1` 즉시(최우선). 셋은 **배타** + `animate` cleanup `.stop()`.
+- 뷰포트 판별: `useIsDesktop`(`useSyncExternalStore` + `matchMedia('(min-width:48rem)')`) — reduced 훅과 **같은 SSR-안전 패턴**(`NEXTJS_GUIDE.md` §5.6.1).
+
+### 함정 — `useInView` 트리거를 "섹션"에 걸면 너무 이르다
+- 섹션 ref에 걸면 상단 패딩(`pt-32`)·헤더가 **먼저** 뷰에 들어와, 타임라인이 보이기 전에 재생이 끝남("비슷하게 안 느껴짐"). `!inView`로 조건을 반대로 건 실수도 겹쳐 마운트 즉시 재생되기도 했다.
+- 별도 `listTargetRef`를 **타임라인 래퍼**에 걸어 "보일 때 재생". 트리거를 제대로 잡으니 duration도 3s → **1.8s로 충분**.
+
+### 교훈
+- **횡단/분기 처리는 잎마다 말고 "근원 하나"만 바꾼다** — reduced 가드(latched=1)도, 모바일 드라이버(시간 재생)도 전부 `latched` 한 곳에서. (메모리 `guard-cross-cutting-at-source`, `AI_COLLAB_NOTES.md`.)
+- `useInView` 트리거는 **"실제로 보여줄 요소"**에 건다(섹션 전체가 아니라 타임라인).

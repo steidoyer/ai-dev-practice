@@ -103,6 +103,28 @@ export default async function Page() {
 - **정적 ↔ 동적은 "자동 판정"**된다: `cookies()`/`headers()`/캐시 안 하는 `fetch`/동적 `params` 등 **동적 API를 쓰면** 그 라우트가 동적으로 바뀐다. 안 쓰면 정적.
 - 빌드 로그의 `○ (Static)` / `ƒ (Dynamic)` 표기로 확인(이 프로젝트는 전부 `○`).
 
+### 3.1 하이드레이션 — 서버 HTML을 인터랙티브 앱으로
+
+**한 줄**: 서버가 만든 **정적 HTML**에, 브라우저의 React가 **이벤트·상태·effect를 붙여** 살아있는 앱으로 만드는 과정. DOM을 새로 만들지 않고 **서버 HTML을 재사용**한다(마른 뼈대에 물을 부어 살린다 = hydrate).
+
+**순서**
+1. 서버가 컴포넌트를 **HTML 문자열**로 렌더 → 브라우저로 전송.
+2. 브라우저가 **HTML을 즉시 표시**(빠른 첫 화면·SEO). 단 이 시점엔 **껍데기** — 클릭·상태·애니메이션 없음.
+3. JS 번들 다운로드·파싱 → React가 **하이드레이션**(HTML에 핸들러·상태·effect 연결).
+4. 이후 **인터랙티브**.
+
+> 2~3 사이 짧은 창엔 **"보이지만 안 눌리는"** 상태가 있다(버튼을 눌러도 반응 없음). 번들이 크면 이 창이 길어진다(TTI 지연).
+
+**왜 이렇게(순수 CSR 대비)**: CRA 같은 순수 CSR은 **빈 HTML + JS**를 보내 JS 실행 전엔 **백지**다. SSR+하이드레이션은 **첫 화면을 빨리 + SEO**를 챙기면서도 결국 React 앱이 된다.
+
+**반드시 맞아야 하는 것**: 하이드레이션 때 **클라이언트의 첫 렌더가 서버 HTML과 같은 트리**를 내야 한다. 다르면 **하이드레이션 불일치**(→ §5.6): React가 경고하고 그 부분을 다시 그린다(깜빡임·SSR 이점 손실).
+- **불일치를 부르는 것**: `Date.now()`/`Math.random()`/`matchMedia`/`localStorage`처럼 **서버·클라가 다르거나 서버엔 없는 값**으로 **첫 렌더 출력을 분기**.
+- **회피**: 그런 값으로 첫 렌더를 가르지 말고 → **`useSyncExternalStore`(+`getServerSnapshot`)**(§5.6.1)나 "마운트 게이트"(`useState(false)`+`useEffect`로 true)로 **첫 렌더는 서버와 같게, 값 반영은 마운트 후**로 미룬다.
+
+**App Router 뉘앙스**: **서버 컴포넌트는 하이드레이션하지 않는다**(클라 JS가 없음 — RSC 페이로드로 전달). **`'use client'` 컴포넌트만** 하이드레이션 대상(§2.2). 그래서 클라 컴포넌트를 줄이면 하이드레이션 비용(클라 CPU)이 준다.
+
+**이 프로젝트 연결**: reduced-motion·브레이크포인트를 서버가 모르니(요청에 안 실림), 서버·클라 첫 렌더를 **같은 값으로 맞춰** 불일치를 막고 마운트 후 실제값으로 보정한다 — `useReducedMotionSafe`·`useIsDesktop`(§5.6·§5.6.1, `WORK_LOG.md`).
+
 ---
 
 ## 4. 실무에서 자주 쓰는 API
@@ -150,15 +172,83 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
 `NEXT_PUBLIC_`를 붙이면 **그 값은 클라이언트 번들에 그대로 박힌다.** API 키·secret엔 절대 이 접두사를 붙이지 말 것.
 
 ### 5.6 hydration mismatch
-서버가 그린 HTML과 클라이언트 첫 렌더가 다르면 경고+깜빡임. 원인: `Date.now()`/`Math.random()`/`localStorage`를 렌더 중에 사용, **`matchMedia`/`useReducedMotion` 등 서버엔 없는 "클라 전용 값"으로 render 출력을 분기**, 브라우저 확장 간섭 등.
+(하이드레이션 개념 자체는 §3.1.) 서버가 그린 HTML과 클라이언트 첫 렌더가 다르면 경고+깜빡임. 원인: `Date.now()`/`Math.random()`/`localStorage`를 렌더 중에 사용, **`matchMedia`/`useReducedMotion` 등 서버엔 없는 "클라 전용 값"으로 render 출력을 분기**, 브라우저 확장 간섭 등.
 - **클라 전용 값 해결**: 서버는 그 값을 못 받으니(요청에 안 실림) **서버는 기본값으로 렌더 → 마운트 후 클라에서 실제값으로 보정**해야 한다. `useEffect`로 세팅(마운트 게이트)해도 되지만, **`useSyncExternalStore`(+ `getServerSnapshot`)** 가 정석(재구독·테어링까지 처리). 예: reduced-motion을 `useReducedMotionSafe` 훅으로(→ `FRAMER_MOTION_GUIDE.md` §5.3).
 - **범위**: 내 환경/로컬 한정이 아니라 **범용 React SSR 이슈**(Remix·Astro 등도). **dev는 콘솔 경고**, **prod는 경고 없이도 해당 서브트리를 클라에서 재생성**(깜빡임·SSR 이점 손실)하므로 실제 버그다. (HMR로 인한 stale 번들 불일치는 별개 → §7.1)
+
+### 5.6.1 `useSyncExternalStore` — 외부 값을 SSR-안전하게 읽기 (React 훅)
+
+§5.6의 "클라 전용 값" 문제를 푸는 **정석 훅**. 이 프로젝트의 `useReducedMotionSafe`·`useIsDesktop`이 이 훅으로 되어 있어, 여기 한 곳에 정리한다.
+
+#### 기본 문법
+```tsx
+import { useSyncExternalStore } from "react"
+const value = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+```
+
+#### 매개변수 / 반환
+| 인자 | 타입 | 뜻 |
+|---|---|---|
+| 1 `subscribe` | `(onChange) => cleanup` | **변화 구독법**. React가 준 `onChange`를 외부 소스에 연결하고 **해제 함수를 반환**. 값이 바뀌면 `onChange()` 호출 → React가 다시 읽음 |
+| 2 `getSnapshot` | `() => Snapshot` | **현재 값**(클라이언트). 외부 소스에서 지금 값을 읽어 반환 |
+| 3 `getServerSnapshot?` | `() => Snapshot` | **서버·하이드레이션용 값**. SSR 시 사용 → 서버 HTML과 클라 첫 렌더 일치 |
+| 반환 | `Snapshot` | 현재 값(바뀌면 자동 리렌더) |
+
+(시그니처: `@types/react/index.d.ts:1924`.)
+
+#### 역할
+`matchMedia`·`localStorage`·브라우저 이벤트처럼 **React 바깥에 살고, 변할 수 있는 값**을 **리렌더와 이어주고** SSR에서도 안전하게 읽는 React 공식 훅. `useState`+`useEffect`로 흉내낼 수 있지만, 이 훅은 **구독 타이밍·동시성 tearing·SSR 스냅샷**을 알아서 처리한다(`matchMedia`가 교과서 예시).
+
+#### 왜 SSR에 안전한가 (핵심)
+서버엔 `matchMedia`/`window`가 없어 클라 전용 값을 render 출력에 바로 쓰면 **서버=false / 클라=true** 하이드레이션 불일치가 난다(§5.6). `getServerSnapshot`이 **"서버는 이 값으로 가정"**을 명시해, 서버 HTML과 클라 첫 렌더가 **같은 값**으로 그려지고 → 마운트 후 실제값으로 **재렌더 보정**한다.
+
+#### 예시 — 이 프로젝트 패턴 (`useIsDesktop`)
+```tsx
+const getServerSnapshot = () => false                        // 서버 가정
+const getSnapshot = () => matchMedia('(min-width: 48rem)').matches
+const subscribe = (cb: () => void) => {
+  const m = matchMedia('(min-width: 48rem)')
+  m.addEventListener('change', cb)
+  return () => m.removeEventListener('change', cb)           // 해제 함수 반환
+}
+export const useIsDesktop = () =>
+  useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+```
+
+#### 주의사항
+- **`getSnapshot`은 "값이 같으면 같은 참조"를 지켜야** 한다 — 호출마다 **새 객체/배열**을 만들어 반환하면 React가 매번 "바뀌었다"고 보고 **무한 리렌더**. 원시값(boolean·숫자·문자열)은 안전, 객체를 돌려줘야 하면 **캐시**해서 같은 참조를 반환.
+- `subscribe`·`getSnapshot`·`getServerSnapshot`은 **모듈 최상위**(컴포넌트 밖)에 두면 참조가 안정적이라 불필요한 재구독이 없다(이 프로젝트 두 훅이 그렇게 함).
+- `getServerSnapshot`을 **빼면 SSR에서 에러/경고** → SSR 프로젝트에선 항상 제공.
+- `getServerSnapshot`의 **기본값 선택**이 하이드레이션·초기 동작에 영향 — 예: `useIsDesktop`을 `false`로 두면 데스크탑도 첫 순간 모바일로 가정되어 **드라이버 분기와 엮인다**(→ `FRAMER_MOTION_GUIDE.md` §3.2 근원 가드).
+
+#### 기타
+`import { useSyncExternalStore } from "react"`. 사용처: `src/hooks/useReducedMotionSafe.ts`(reduced-motion)·`src/hooks/useIsDesktop.ts`(브레이크포인트). 배경: §5.6(하이드레이션)·`WORK_LOG.md`(reduced-motion SSR 사례)·`FRAMER_MOTION_GUIDE.md` §5.3.
 
 ### 5.7 next/image
 `fill`을 쓰면 부모에 `position: relative`+크기가 있어야 하고 `sizes`를 정확히 줘야 함(안 그러면 과대 로드/CLS). above-the-fold만 `priority`. 외부 도메인은 `next.config`의 `images.remotePatterns` 등록(→ 실물: `next.config.ts`).
 
 ### 5.8 Link vs a
 내부 이동은 `<Link>`(프리페치+클라이언트 전환). 외부 링크·앵커(`#id`)나 mailto는 일반 `<a>`로 충분.
+
+### 5.9 `useEffect` vs `useLayoutEffect` — 페인트 타이밍 + SSR 경고
+
+**차이는 브라우저 페인트 기준 타이밍 하나뿐.** 문법도 동일(`(() => {…}, [deps])`)하고 하는 일(부수효과 실행)도 같다. 한 렌더의 흐름:
+
+```
+렌더 계산 → DOM 커밋 → [useLayoutEffect: 동기, 페인트 前] → 브라우저 페인트 → [useEffect: 비동기, 페인트 後]
+```
+
+| | `useLayoutEffect` | `useEffect` |
+|---|---|---|
+| 실행 시점 | DOM 커밋 후 **페인트 직전**(동기) | 페인트 **후**(비동기) |
+| 사용자가 중간 상태를 보나 | **안 봄** — 페인트 전에 값이 바뀜 | **한 프레임 볼 수 있음**(깜빡임) |
+| 페인트를 막나 | **막음** — 느리면 화면이 늦게 뜸 | 안 막음 — 성능 유리 |
+| 쓰는 곳 | DOM 측정·페인트 전 시각 보정 | 구독·패칭·타이머 등 대부분 |
+
+- **기본은 `useEffect`.** 페인트를 막지 않아 성능에 유리하고, 부수효과 대부분(구독·데이터 패칭·이벤트 등록·타이머)은 페인트 후에 돌아도 문제없다. React 공식도 "먼저 `useEffect`를 쓰고, 꼭 필요할 때만 `useLayoutEffect`"를 권한다.
+- **`useLayoutEffect`가 꼭 필요한 때**: 페인트 **전에** DOM을 읽거나(요소 크기·위치 **측정**) 그 결과로 화면을 보정해, **사용자가 중간 상태(깜빡임)를 못 보게** 해야 할 때. 대표 예 — 툴팁 위치를 재서 잡기, 초기값을 최종값으로 즉시 스냅. `useEffect`로 하면 "측정 전 상태 → 보정 후 상태"가 한 프레임 튄다.
+- ⚠️ **Next SSR 경고**: `useLayoutEffect`는 **서버에서 실행 안 된다**(모든 effect가 서버에선 안 돎). 그런데 Next는 클라 컴포넌트도 초기 HTML용으로 **서버 렌더**하므로, dev에서 *"useLayoutEffect does nothing on the server…"* 경고가 뜰 수 있다. **동작 버그는 아니다**(어차피 클라에서만 실행). 거슬리면 라이브러리들이 쓰는 **`useIsomorphicLayoutEffect`**(클라=`useLayoutEffect` / 서버=`useEffect`로 스위치, 보통 `typeof window !== 'undefined'`로 분기) 패턴 — framer-motion 내부도 이걸 쓴다.
+- **이 프로젝트 사례**: Journey reduced-motion **근원 가드**에서 `latched`를 페인트 전에 1로 고정해 "안 그려진 초기 상태(latched=0)" 한 프레임을 없애려 할 때 `useLayoutEffect`가 후보(→ `FRAMER_MOTION_GUIDE.md` §3.2). 그 1프레임을 허용하면 `useEffect`로 충분. 관련: §5.6(클라 전용 값 → 마운트 후 보정).
 
 ---
 

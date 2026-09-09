@@ -84,8 +84,15 @@
 
 - **공통(기본=모바일)**: **단일 컬럼**. 왼쪽 스파인 선, 오른쪽 노드 카드 세로 스택.
 - **레이아웃 [확정] (A) 좌측 선 + 우측 카드 단일 컬럼** — 데스크탑·모바일 공통(중앙 교차 B는 미채택).
-- **[구현 반영] 스크롤 구동은 데스크탑만 sticky pin** — 키 큰 래퍼(`md:h-[250vh]`) + 내부 `md:sticky md:top-0 md:h-screen`, `useScroll` `target`은 래퍼. **pin 요소는 1화면에 들어와야**(넘으면 잘림) → **모바일은 pin 없이 별도**(`md:` 분기, 애니 드라이버 미정: `whileInView` 등). 상세 `WORK_LOG.md`.
-- 선 그리기·노드 강조 로직은 폭과 무관(좌표만 다름). hover는 터치에서 사실상 tap → `whileTap` 위주.
+- **[구현 반영] 스크롤 구동은 데스크탑만 sticky pin** — 섹션 `md:h-[100rem]` + 내부 래퍼 `md:sticky md:top-20`, `useScroll` `target`은 섹션. **pin 요소는 1화면에 들어와야**(넘으면 잘림) → **모바일은 pin 없이 별도**(아래 드라이버 스왑). 상세 `WORK_LOG.md`.
+- **[구현 반영/결정] 모바일 애니 드라이버 = `latched` 드라이버만 뷰포트로 스왑.** 파이프(선·노드·글로우·와이프)는 그대로 두고, `latched`를 **무엇이 미느냐**만 가른다:
+  - **데스크탑**: 스크롤 최댓값 latch(기존 `useScroll`+`useMotionValueEvent`, `if(isDesktop …)`).
+  - **모바일**: `useInView`로 뷰 진입 감지 → **`animate(latched, 1, { duration: 1.8, ease: 'easeOut' })`** 시간 재생(스크롤 거리 무관). 트리거를 **타임라인 래퍼**에 걸면 전 구간이 보여 **1.5~2s로도 충분**(현재 1.8s 확정). `once:true`, 필요 시 `margin`으로 미세조정.
+  - ⚠️ **`useInView` ref는 섹션이 아니라 타임라인(`<ol>`/그 래퍼)에** 걸 것 — 섹션에 걸면 상단 패딩(`pt-32`)·헤더가 먼저 뷰에 들어와 **타임라인이 보이기 전에 재생이 끝난다**.
+  - **뷰포트 판별**: `useIsDesktop`(`useSyncExternalStore`+`matchMedia('(min-width:48rem)')` → `NEXTJS_GUIDE.md` §5.6.1).
+  - **reduce 최우선**: `latched=1` 즉시(`useLayoutEffect`). 셋은 **배타**(동시 구동 금지) — 모바일 조건 `if(!isDesktop && !reduce && inView)`, `animate`는 cleanup `.stop()`.
+  - 근거: '근원 하나만 스왑'(→ 메모리 `guard-cross-cutting-at-source`, `FRAMER_MOTION_GUIDE.md` §3.2).
+- 선 그리기·노드 강조 로직은 폭과 무관(좌표만 다름).
 
 ---
 
@@ -130,11 +137,11 @@
 
 > 확정된 결정(레이아웃 A·마일스톤 4개·네비 `Road`·발광 box-shadow·노드 등장/강조 통합)은 본문(§1~§4)에 반영됨. 아래는 **남은 작업**만.
 
-**완료**: 마크업/스타일, 스크롤 선 그리기(데스크탑 sticky), 노드 등장(첫 노드 포함), 마지막 노드 글로우+링.
+**완료**: 마크업/스타일, 스크롤 선 그리기(데스크탑 sticky), 노드 등장(첫 노드 포함), 마지막 노드 글로우+링,
+- **⑤ 융합형 색 와이프** — 좌→오 공간 와이프(`background-clip:text`, §3.4·`CSS_ADVANCED.md` §5). 모바일 solid(`max-md:text-accent`) / reduced는 근원 가드로 완성 고정.
+- **⑥ 카드 hover** — 장식 hover만(색·보더 = Tailwind `hover:`, 부상 `whileHover y`; **reduce 시 y 정지**). 장식이라 tap 없음.
+- **⑦ reduced-motion 근원 가드** — `latched=1`(`useLayoutEffect`)로 선·노드·글로우·와이프 전부 최종형 + 높이 `md:h-auto` + hover `y` 가드. (잎마다 아니라 드라이버 하나로 — `guard-cross-cutting-at-source`.)
+- **모바일 애니 드라이버** — 드라이버 뷰포트 스왑(§4): 데스크탑 스크롤 latch / 모바일 `useInView`(**타임라인 래퍼 ref**)→`animate(latched, 1, {duration: 1.8, ease:'easeOut'})` / reduce 우선. 셋 배타 + `animate` cleanup `.stop()`. (`tsc`·lint 통과.)
 
 **진행/남음**:
-- **⑤ 융합형 색 와이프** — `color-mix` 페이드 → 좌→오 공간 와이프로 교체 중(§3.4, `CSS_ADVANCED.md` §5). 폴백(모바일 solid accent / reduced 고정 / `text-transparent` 안전장치)까지.
-- **⑥ 카드 hover/tap** — 미착수(`whileHover`/`whileTap`, §3-5·§5). 포인터 전용, hover로 정보 은닉 금지.
-- **⑦ reduced-motion 전체 정지형** — 지금 **색(--mix)만** 가드됨. **선(scaleY)·노드(opacity)·scale·box-shadow는 아직 스크롤 구동** → `useReducedMotionSafe`로 "선 다 그려짐 + 노드 다 보임 + 융합형 accent 완성" 고정 필요(§3 접근성).
-- **모바일 애니 드라이버** — sticky는 `md:`만. pin 없는 모바일에서 선/노드를 어떻게 구동할지 미정(`whileInView` 등, §4).
-- **경미 정리**: 마지막 `item.title` 중복(JSX 하드코딩), 하드코딩 구간을 `seg`로 통일, 주석 잔여물.
+- **경미 정리**: ① 마지막 `item.title` 중복(JSX가 하드코딩 — 와이프용 `<span>` 래핑 필요 → **유지(Approach와 일관)** vs 데이터 분리 결정), ② `useIsDesktop` 표기 통일(`matchMedia`/`window.matchMedia`). (하드코딩 구간→`seg` 통일·죽은 주석은 **완료**.)
