@@ -2,7 +2,7 @@
 
 import { motion, useTransform, useScroll, useMotionValue, useMotionValueEvent, type MotionStyle } from 'framer-motion'
 import FadeIn from '../motion/FadeIn'
-import { useRef} from 'react';
+import { useLayoutEffect, useRef} from 'react';
 import { useReducedMotionSafe } from '@/hooks/useReducedMotionSafe';
 import { FiArrowDown } from "react-icons/fi";
 
@@ -33,7 +33,6 @@ const texts = [
   },
 ];
 
-
 const containerVariants = {
   hidden: {},
   show: {
@@ -56,6 +55,13 @@ export default function Approach() {
   });
 
   const latched = useMotionValue(0);
+
+  useLayoutEffect(() => {
+    if (reduce) {
+      latched.set(1);
+    }
+  }, [reduce, latched]);
+  
   useMotionValueEvent(scrollYProgress, 'change', 
     (v) => {
       if (v > latched.get()) {
@@ -93,7 +99,7 @@ export default function Approach() {
           <div className="flex items-end justify-between">
             <div className="flex flex-col gap-element">
               <span className="font-code text-sm text-accent">{'// APPROACH'}</span>
-              <h2 className='font-korean font-semibold text-3xl text-primary md:text-section md:leading-tight'>나는 <motion.span className='text-accent md:text-accent-color' style={{['--mix']: reduce ? 1 : textColor} as MotionStyle}>융합형</motion.span> 개발을 지향합니다</h2>
+              <h2 className='font-korean font-semibold text-3xl text-primary md:text-section md:leading-tight'>나는 <motion.span className='text-accent md:text-accent-color' style={{['--mix']: textColor} as MotionStyle}>융합형</motion.span> 개발을 지향합니다</h2>
             <p className='sr-only'>기획, 디자인, 개발이 합쳐진 융합형</p>
             </div>
           </div>
@@ -107,18 +113,18 @@ export default function Approach() {
             return (
               <motion.div
                 key={index}
-                style={reduce ? {x: 0, y: 0, opacity: 1} : {x, y, opacity}}
+                style={{x, y, opacity}}
                 className={`absolute rounded-full border-[1.5px] size-[22.5rem] border-accent bg-accent-subtle ${item.circleStyle}`}
               ></motion.div>
             )
           })}
           {texts.map((item, index) => {
             return (
-              <motion.span key={index} className={`absolute font-semibold text-base ${item.textStyle}`} style={reduce ? {opacity: 1} : textOpacity}>{item.text}</motion.span>
+              <motion.span key={index} className={`absolute font-semibold text-base ${item.textStyle}`} style={textOpacity}>{item.text}</motion.span>
             )
 
           })}
-            <motion.span className='absolute top-[15.28rem] left-[15.41rem] font-korean text-2xl text-accent font-semibold' style={reduce ? {opacity: 1} : textOpacity}>융합형</motion.span>
+            <motion.span className='absolute top-[15.28rem] left-[15.41rem] font-korean text-2xl text-accent font-semibold' style={textOpacity}>융합형</motion.span>
           </div>
         </div>
 
