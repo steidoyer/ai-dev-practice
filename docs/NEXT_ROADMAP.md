@@ -49,8 +49,8 @@ GitHub에 올린 뒤 baseline 시점에 **`ai-only` 태그**로 스냅샷을 찍
 두 로컬 폴더는 **같은 하나의 GitHub 저장소**를 바라보는 서로 다른 작업 디렉터리일 뿐이다(별도 repo·fork 관계 아님).
 
 **할 일**
-- [ ] 현재 프로젝트를 GitHub 원격 저장소(`ai-dev-practice`)로 push. *(업데이트: 로컬 커밋이 생성됨 — 원격 push·`ai-only` 태그·클론 상태는 개발자 확인.)*
-- [ ] baseline 시점에 `ai-only` 태그를 찍어 원본 상태 스냅샷 보존.
+- [x] 현재 프로젝트를 GitHub 원격 저장소(`ai-dev-practice`)로 push. (origin 연결·push 완료, `main`↔`origin/main` 동기화 확인.)
+- [x] baseline 시점에 `ai-only` 태그를 찍어 원본 상태 스냅샷 보존. (태그 `ai-only` 존재 확인.)
 - [ ] 내 컴퓨터의 **다른 경로에 새 폴더를 만들어** 그 원격을 `git clone` → 이 새 로컬 폴더에서 직접 코딩(지금 폴더는 baseline으로 보존, 손대지 않음).
 
 **왜 이 방식인가 (GitHub는 자기 계정의 자기 저장소를 같은 계정으로 fork 불가)**
@@ -77,22 +77,22 @@ GitHub에 올린 뒤 baseline 시점에 **`ai-only` 태그**로 스냅샷을 찍
 
 ---
 
-## 3단계. 새 섹션 제작 (핵심 — 직접 손코딩) — 진행 중
+## 3단계. 새 섹션 제작 (핵심 — 직접 손코딩) — 완료
 
-이 프로젝트에서 실력 향상의 **메인 목표**. **3개 섹션**(Approach·Journey·Services)을 처음부터 직접 작성한다. (원래 "2개"에서 확장.)
+이 프로젝트에서 실력 향상의 **메인 목표**. **3개 섹션**(Approach·Journey·Services)을 처음부터 직접 작성한다. (원래 "2개"에서 확장.) → **3개 모두 완료·`main` 병합.**
 
 **진행 상태**
-- **Approach** — 마크업·스타일 완료, **인터랙션 단계 진행 중**(스크롤 병합 벤: `useScroll`/`useTransform`, sticky+tall, latched 한 방향, `background-clip` 색 와이프). 기획: `SECTION_APPROACH_PLAN.md`.
-- **Journey** — 기획 완료(스크롤 선 그리기 `pathLength` + 노드 강조 + 색 와이프 + hover + 선 머리 발광), 구현 대기. 기획: `SECTION_JOURNEY_PLAN.md`.
-- **Services** — 기획 완료(카드 펼치기 `AnimatePresence`+`layout` + hover/tap + 스태거), 구현 대기. 기획: `SECTION_SERVICES_PLAN.md`.
+- **Approach** — **완료.** 스크롤 병합(`useScroll`/`useTransform`, sticky+tall, latched 한 방향, `background-clip` 색 와이프) + reduced-motion 근원 가드(A) 리팩터링(`7370819`). 기획: `SECTION_APPROACH_PLAN.md`.
+- **Journey** — **완료·병합.** CSS 마디 타임라인(`scaleY` 선 그리기), 노드/카드 등장, 마지막 노드 발광(`useMotionTemplate`), 색 와이프, 카드 hover, reduced-motion 근원 가드, 모바일 드라이버. 기획: `SECTION_JOURNEY_PLAN.md`.
+- **Services** — **완료·병합**(`8ba4292`/`57865f1`). 다중 열기 아코디언(`openSet`:Set) + `AnimatePresence` 높이 0↔auto 펼침 + `whileHover` 부상 + `motion.ul` `staggerChildren` 스태거 + reduced-motion 근원 가드 + 네이티브 button 키보드. 기획: `SECTION_SERVICES_PLAN.md`.
 - 전체 순서: **Hero → Approach → Journey → Projects → Skills → Services → CTA**.
 - 진행·결정·리뷰 로그: `PROJECT_PLAYBOOK.md` §10, `CODE_REVIEW_LOG.md`.
 
-**할 일 (내가 주도)**
-- [ ] 추가할 섹션 2개의 **목적/콘텐츠/레이아웃** 기획.
-- [ ] 마크업 → 스타일(Tailwind) → 인터랙션 순으로 직접 구현.
-- [ ] 기존 규칙 준수: 섹션 앵커 `id`, `container-page`, 디자인 토큰만 사용, 반응형(모바일 우선), 접근성 기준.
-- [ ] Header 네비/앵커, 헤딩 계층(h2), 필요 시 framer-motion 등장(재사용 래퍼) 연동.
+**할 일 (내가 주도)** — 완료
+- [x] 추가할 섹션 3개의 **목적/콘텐츠/레이아웃** 기획.
+- [x] 마크업 → 스타일(Tailwind) → 인터랙션 순으로 직접 구현.
+- [x] 기존 규칙 준수: 섹션 앵커 `id`, `container-page`, 디자인 토큰만 사용, 반응형(모바일 우선), 접근성 기준.
+- [x] Header 네비/앵커, 헤딩 계층(h2), 필요 시 framer-motion 등장(재사용 래퍼) 연동.
 
 **AI에게 기대하는 서포트**
 - 착수 전: "이 섹션에서 내가 결정하고 구현해야 할 항목이 뭐가 있어?" → 체크리스트.

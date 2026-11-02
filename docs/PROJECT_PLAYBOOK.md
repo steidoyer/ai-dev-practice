@@ -72,10 +72,10 @@ Node.js v22+ · Next.js 16 (App Router) · Tailwind CSS v4 · framer-motion v12 
   - [ ] OG 이미지 실물 — 보류(정적 PNG or `opengraph-image.tsx`. 개념: DEV_QNA Q13~Q14)
   - [~] 성능 — 이 프로젝트엔 대부분 미적용(정적·소규모). 제안 체크리스트를 **docs/PERFORMANCE_NOTES.md**에 저장(다음 단계용).
 - [ ] 8. 배포 (Vercel)
-- [~] 9. 저장소 정리 & 공개 — 저장소명 `ai-dev-practice` 확정, README를 AI 연습 취지로 재작성. **GitHub 업로드(커밋/원격/push)는 개발자가 직접 진행 예정**(현재 미완).
+- [x] 9. 저장소 정리 & 공개 — 저장소명 `ai-dev-practice` 확정, README를 AI 연습 취지로 재작성. **GitHub origin push 완료**, baseline `ai-only` 태그 보존.
 - [~] 10. (다음 챕터) 직접 코딩 — **진행 중.** AI는 멘토 역할. **상세 로드맵: docs/NEXT_ROADMAP.md**, 진행 로그: **§10**.
-  - [~] 새 섹션 직접 제작 — **Approach** 인터랙션 단계 진행 중(스크롤 병합·sticky·latched·색 와이프). **Journey/Services** 기획 완료, 구현 대기.
-  - [ ] 사전 정비(Tailwind 클래스명 등) / 마무리 / OG 이미지 / 성능·배포 — 대기.
+  - [x] 새 섹션 직접 제작 — **Approach·Journey·Services 3개 모두 완료·`main` 병합**(스크롤 병합/타임라인 선 그리기/다중 열기 아코디언 등 인터랙션 포함).
+  - [ ] 사전 정비(Tailwind 클래스명 등) / 마무리(4단계) / OG 이미지(5단계) / 성능·배포(6단계) — 대기.
 
 ## 5. 진행 방식
 
@@ -164,8 +164,7 @@ Node.js v22+ · Next.js 16 (App Router) · Tailwind CSS v4 · framer-motion v12 
 - [x] Hero 텍스트 순차 등장 (stagger)
 - [x] 프로젝트 카드 hover 확대 — ProjectCard
 - [x] 스크롤 유도 화살표 반복 바운스 — Hero
-- [~] sticky / 스크롤 연동 — **직접 손코딩 단계(3단계)에서 착수.** Approach에서 `useScroll`+sticky+tall로 스크롤 병합 구현 중(§10). Journey에서 `pathLength` 선 그리기 예정.
-      → 컴포넌트별로 하나씩 붙인다.
+- [x] sticky / 스크롤 연동 — **직접 손코딩 단계(3단계)에서 완료.** Approach `useScroll`+sticky+tall 스크롤 병합, Journey 스파인은 `pathLength`가 아니라 **CSS 마디(`scaleY`)** 타임라인으로 구현(§10). 컴포넌트별로 하나씩 붙임.
 
 **적용 방식 결정**: 공통 등장 애니메이션은 재사용 래퍼(`src/components/motion/FadeIn.tsx` 등, 얇은 클라이언트 컴포넌트)를 기본으로 쓰고, Hero stagger처럼 1회성 특수 효과는 해당 컴포넌트에 직접 넣는 혼합 방식. 래퍼로 감싸면 섹션은 서버 컴포넌트로 유지됨(RSC children 전달 원리). 접근성은 `useReducedMotion`을 래퍼 한 곳에서 처리. (상세 비교·근거: docs/DEV_QNA.md Q11)
 
@@ -185,8 +184,8 @@ Node.js v22+ · Next.js 16 (App Router) · Tailwind CSS v4 · framer-motion v12 
 > 코드 리뷰·질문 상세는 `docs/CODE_REVIEW_LOG.md`, 개념은 각 가이드 문서.
 
 ### 10.1 상태
-- **Approach 섹션**: 마크업·스타일 완료 → **인터랙션 단계 진행 중**(스크롤 병합 벤 다이어그램).
-- **Journey / Services**: **기획 확정**(문서 완료), 구현 대기.
+- **Approach · Journey · Services**: **3개 모두 구현 완료·`main` 병합.** (손코딩 3단계 = 메인 목표 달성.) 각 인터랙션 상세·결정 근거는 `SECTION_*_PLAN.md`·`FRAMER_MOTION_GUIDE.md`·`CODE_REVIEW_LOG.md`.
+- 남은 로드맵: 2단계(사전 정비·선택) / 4단계(마무리) / 5단계(OG 이미지) / 6단계(성능·배포). → `NEXT_ROADMAP.md`.
 - 전체 섹션 순서: **Hero → Approach → Journey → Projects → Skills → Services → CTA**.
 
 ### 10.2 Approach 인터랙션 — 핵심 결정
