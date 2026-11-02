@@ -88,6 +88,20 @@ type Either = A | B        // 유니온(둘 중 하나)
 
 ## 3. 실무에서 자주 쓰는 것 (React/Next 맥락)
 
+### 3.0 타입은 대부분 '추론'된다 — 직접 쓰는 건 추론이 막힐 때뿐
+
+TS는 값에서 타입을 **자동 추론**하므로 실무에선 타입을 **거의 안 써도** 된다(이 프로젝트도 대부분 추론에 맡긴다). **직접 명시가 필요한 건 추론이 안 되거나 너무 좁게 잡힐 때**뿐 — 대표 3가지:
+
+| 상황 | 왜 추론이 안 되나 | 어떻게 |
+|---|---|---|
+| **`useState` 초기값이 `null`/빈값** | 초기값만으로 추론 → `null`처럼 **너무 좁게** 잡혀 나중에 숫자를 못 넣음 | 제네릭 명시 `useState<number \| null>(null)` (§3.3) |
+| **핸들러/함수를 밖으로 빼서 선언** | 인라인 콜백(`onClick={(e)=>…}`)은 문맥으로 `e`가 추론되지만, 밖으로 빼면 **문맥이 사라져** `noImplicitAny` 위반 | 매개변수 타입 명시 `(index: number) => …` (§3.2) |
+| **props·데이터 배열의 모양** | 객체가 "무엇을 담을지"는 TS가 추측 못 함 | `type XxxProps` · `const data: T[]`로 한 번 정의 (§3.1·§3.4) |
+
+- 즉 **초기값·문맥·데이터 모양**이 타입을 알려주지 못하는 자리에서만 손으로 쓴다.
+- 확신이 안 서면 **에디터에서 값에 hover** → 추론된 타입 확인(§7). **빨간 줄**이 뜨는 곳이 대개 "여긴 추론이 안 되니 네가 알려달라"는 신호다.
+- 이 프로젝트도 props·데이터(`FadeIn`·`ProjectCard`·`Projects`)는 `type`으로 정의하고, `useState(false)`·인라인 콜백은 추론에 맡긴다. **인터랙션 로직(상태·핸들러)을 직접 짜면** 위 첫 두 경우를 만난다.
+
 ### 3.1 컴포넌트 props 타입
 ```tsx
 type ProjectCardProps = {
@@ -224,6 +238,86 @@ useTransform(scrollYProgress, [0, 1], { x: [...], y: [...], opacity: [...] })
 // 결과:  { x: MotionValue<...>, y: MotionValue<...>, opacity: MotionValue<...> }
 ```
 → `style={결과}`로 통째로 넘겨 여러 속성을 한 번에 구동. (CSS 커스텀 속성 `--x`는 `style` 타입(`MotionStyle`=`CSSProperties` 기반)이 키를 몰라 `as` 단언이 필요 — §5.2.)
+
+### 3.11 `Set`·`Map` 컬렉션 (+ React state 불변 갱신)
+
+JS 내장 컬렉션. 배열·객체로는 어색한 "고유 값 집합"·"임의 키 매핑"에 쓴다. 타입은 담는 타입을 제네릭 `<>`로 받는다(§3.6).
+
+#### `Set<T>` — 고유한 값들의 모음 (중복 없음)
+배열과 달리 **중복 불가·인덱스 없음·순서는 삽입 순서**.
+```ts
+new Set<number>()          // 빈 Set
+new Set([1, 2, 2, 3])      // iterable로 생성 → {1, 2, 3} (중복 제거)
+new Set(otherSet)          // 복사
+```
+| 메서드/속성 | 뜻 |
+|---|---|
+| `.add(v)` | 추가(이미 있으면 무시). **Set 반환**(체이닝) |
+| `.delete(v)` | 제거. **boolean 반환**(있었으면 true) |
+| `.has(v)` | 포함 여부(boolean). **O(1) 빠름** |
+| `.size` | 개수(배열 `.length` 격) |
+| `.clear()` | 전부 비움 |
+| 순회 | `for (const v of set)` · `set.forEach()` · `[...set]`(배열 전개) |
+
+**배열 vs Set**: 중복(허용/자동제거), 인덱스(있음/없음), 포함검사(`includes` O(n) / `has` O(1)), 개수(`.length`/`.size`). → 고유 id·선택 집합·"열린 카드 index"엔 Set이 깔끔.
+
+#### `Map<K, V>` — 키→값 쌍의 모음 (객체보다 유연)
+객체(`{}`)와 달리 **키가 문자열/심볼뿐 아니라 아무 타입**(숫자·객체·함수)·**삽입 순서 보장**·**`.size`**·순회 쉬움·**프로토타입 키 충돌 없음**(`{}`은 `toString` 등 상속 키 위험).
+```ts
+new Map<string, number>()              // 빈 Map
+new Map([['a', 1], ['b', 2]])          // [키,값] 쌍 배열로 생성
+```
+| 메서드/속성 | 뜻 |
+|---|---|
+| `.set(k, v)` | 추가/갱신. **Map 반환**(체이닝) |
+| `.get(k)` | 값(없으면 `undefined`) |
+| `.has(k)` / `.delete(k)` | 포함 여부 / 제거(boolean) |
+| `.size` / `.clear()` | 개수 / 비움 |
+| 순회 | `for (const [k, v] of map)` · `.keys()` · `.values()` · `.entries()` |
+
+> 언제 무엇: 고유 값 집합·포함검사 → **Set** / 임의 키 매핑·순서 필요 → **Map** / 고정 키·JSON 직렬화 필요 → **객체 `{}`**(Map은 `JSON.stringify` 안 됨) / 순서 목록·인덱스 접근 → **배열**.
+
+#### ⚠️ React state로 쓸 때 — 불변 갱신 필수
+Set·Map은 **가변 객체(참조 타입)**다. state로 두고 **그냥 `add`/`set`만 하면 참조가 그대로**라 React가 변경을 못 알아채 **리렌더가 안 된다.** 반드시 **새 인스턴스**를 만들어 갱신한다.
+```tsx
+// 예: 열린 카드 index 집합 토글
+setOpenSet(prev => {
+  const next = new Set(prev)                          // 복사 → 새 참조
+  next.has(i) ? next.delete(i) : next.add(i)
+  return next
+})
+// Map도 동일: const next = new Map(prev); next.set(k, v); return next
+```
+- 배열·객체 state도 같은 원리(스프레드 `[...arr]`·`{...obj}`로 새로 만들기). 왜 참조로 감지하는지는 `DEV_QNA.md` Q20.
+
+> 제네릭 `<>` 표기 기초 → §3.6. state 함수형 업데이트·참조 감지 → `DEV_QNA.md` Q20.
+
+---
+
+### 3.12 리터럴 넓힘(widening)과 문맥 타입 — `const x: Type = …`로 좁히기
+
+TS는 `let`/객체 속성의 값을 **되도록 넓은 타입**으로 추론한다. `{ ease: 'easeOut' }`의 `ease`는 보통 `string`으로 추론된다(`'easeOut'` 리터럴이 아니라). 그런데 framer-motion의 `transition.ease`는 **정해진 문자열 유니온**(`'easeOut' | 'linear' | …` = `Easing`)만 받는다. 그래서:
+
+```ts
+// ❌ 별도 const로 빼면 ease가 string으로 넓혀져 Easing과 안 맞음 → 타입 에러
+const itemVariants = {
+  show: { opacity: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+};
+```
+```ts
+// ✅ 타입을 명시하면 그 타입이 '문맥 타입(contextual type)'이 되어
+//    'easeOut'이 string이 아니라 리터럴로 좁혀짐
+import { type Variants } from 'framer-motion';
+const itemVariants: Variants = {
+  show: { opacity: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+};
+```
+
+- **문맥 타입**: "이 자리에 올 타입"이 먼저 정해져 있으면, TS가 그 타입에 맞춰 값을 추론한다(넓히지 않음). 변수 annotation(`: Variants`), 함수 매개변수, 그리고 **JSX prop**이 문맥을 준다.
+- 그래서 **prop에 인라인**으로 주면(`transition={{ duration: 0.4, ease: 'easeOut' }}`) prop 타입이 문맥을 줘서 에러가 안 난다. **const로 빼는 순간** 문맥이 사라져 `: Variants`가 필요해지는 것.
+- 대안: `as const`(`ease: 'easeOut' as const`)로도 리터럴 고정 가능하지만, 객체 전체를 그 라이브러리 타입으로 **검증까지** 받으려면 `: Variants` 쪽이 낫다.
+
+> 유니온 리터럴 타입 자체 → §4.1. framer에서 이 함정이 나온 실제 맥락 → `FRAMER_MOTION_GUIDE.md` §4.8.
 
 ---
 

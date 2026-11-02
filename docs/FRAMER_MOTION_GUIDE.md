@@ -836,6 +836,27 @@ const image = { rest: { scale: 1 }, hover: { scale: 1.05 } }
 
 §2.6 AnimatePresence 예시. 조건부 렌더(`{open && …}`)를 `AnimatePresence` **안**에 두는 게 핵심.
 
+**펼침(disclosure/아코디언) — 높이 `0 ↔ auto` 애니** (Services 카드 상세):
+```tsx
+<AnimatePresence initial={false}>
+  {open && (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={reduce ? { duration: 0 } : { duration: 0.25, ease: 'easeOut' }}
+      className="overflow-hidden"
+    >
+      <div>…상세…</div>     {/* 패딩·보더는 '안쪽' div에 (바깥은 height만 애니) */}
+    </motion.div>
+  )}
+</AnimatePresence>
+```
+- framer는 `height: 'auto'`를 **실제 높이로 측정해 애니**한다. **`overflow-hidden` 필수** — 펼치는 동안 내용이 삐져나오지 않게 클립.
+- **패딩·보더·마진은 안쪽 div**에 둔다. 바깥 `motion.div`에 margin을 주면 접혀도(height 0) 남아 **빈 틈**이 생긴다. 바깥 요소 간격은 부모 flex `gap`에 맡기면 unmount 시 간격도 함께 사라진다.
+- `reduce`(모션 최소화)면 `duration: 0`으로 **즉시** 펼침(§5.3).
+- `initial={false}`: 첫 렌더에서 이미 열린 항목이 애니로 "펼쳐지며 등장"하지 않게.
+
 ### 4.5 무한 반복 (스피너·바운스)
 
 §2.3 keyframes + `repeat: Infinity`.
@@ -850,6 +871,65 @@ const image = { rest: { scale: 1 }, hover: { scale: 1.05 } }
 ```
 
 탭 인디케이터 이동, 목록 재정렬, 상세 열림 등에 강력. (단 비용이 크니 남발 금지 — §5.)
+
+### 4.7 이 프로젝트 모션 관례(토큰) — 시안 없이 일관되게
+
+정지 시안(Figma)은 **resting states**(레이아웃·색·타이포)만 잡는다 — hover 부상·duration·스태거는 정지 프레임에 안 담긴다(왜 → `DEV_QNA.md` Q16). 그 값들은 아래 **관례**를 재사용해 사이트 전체를 일관되게 유지한다. **절대 규칙이 아니라 출발점** — 브라우저에서 보고 조정하되, 일관성을 위해 되도록 재사용.
+
+| 상황 | 값(관례) | 비고 |
+|---|---|---|
+| **카드 hover** | `whileHover={{ y: -2 }}` + 색·보더는 Tailwind `hover:` + `transition-colors duration-200 ease-out` | 이동만 framer, 색은 Tailwind. reduce 시 `y:0`(§5.3) |
+| **tap(누름)** | `whileTap={{ scale: 0.98 }}` | 링크·버튼일 때. 장식이면 생략 |
+| **등장 페이드업** | `opacity 0→1` + `y 24→0`, `viewport={{ once: true }}` | `FadeIn` 래퍼 기준 |
+| **스태거(리스트 등장)** | 부모 variants `staggerChildren: 0.1`, `delayChildren: 0.05` | Approach 모바일·Hero 값. 자식 간격/시작 지연 |
+| **시간 재생(트리거형)** | `duration: 1.5~2s`(현재 1.8s), `ease: 'easeOut'` | Journey 모바일 드라이버(§3.2) |
+| **스크롤 스크럽** | 선형(진행도=거리, `ease` 없음) | 거리 구동·sticky 필요(§3.2·§3.3) |
+| **기본 easing** | 등장·hover = `easeOut`(빠르게 시작→감속), 스크럽 = 선형 | |
+| **reduced-motion** | 이동(`y`/`scale`)만 끄고 색·opacity는 유지하거나 즉시 스냅 | §5.3, 근원 가드 §3.2 |
+
+> 개념/왜(정지 시안 vs 모션 스펙, 현업 관례) → `DEV_QNA.md` Q16. 이 표는 "그래서 쓸 값".
+
+---
+
+### 4.8 스태거 등장 오케스트레이션 (부모 variants로 자식 순차 재생)
+
+리스트·카드 묶음이 뷰에 들어올 때 **하나씩 순차로** 등장시키는 패턴. 카드마다 `whileInView`+`delay`를 손으로 거는 대신, **부모 한 곳**이 간격을 지휘한다. (Services 섹션 구현.)
+
+```tsx
+const listVariants: Variants = {
+  hidden: {},                                  // 부모 자신은 안 움직임
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+};
+
+<motion.ul variants={listVariants} initial="hidden" whileInView="show" viewport={{ once: true }}>
+  {cards.map((c, i) => (
+    <motion.li key={i} variants={itemVariants}>…</motion.li>
+  ))}
+</motion.ul>
+```
+
+**핵심 원리**
+- **라벨 전파**: 부모가 `animate`(여기선 `whileInView`로)로 `"show"` 라벨에 도달하면, `variants`를 가진 **자식들에게 같은 라벨이 전파**된다. 자식은 `initial`/`animate`를 직접 안 써도 되고 `variants`만 주면 됨.
+- **간격은 부모 몫**: `staggerChildren`(자식 간 간격)·`delayChildren`(첫 자식 시작 지연)은 **부모 `transition`**에만 쓴다. 자식엔 각자의 등장 `transition`(duration 등)만.
+- **격리**: 자식 내부에서 라벨이 아닌 **객체** `initial={{…}}`/`animate={{…}}`를 쓰는 motion(예: 펼침 상세 `motion.div`)은 부모 라벨 전파를 **안 받는다** → 등장 애니와 별개로 동작.
+- **전파가 끊기는 경우** → §5.5(중간에 일반 DOM 요소가 끼면 라벨이 더 못 내려감. motion 체인 유지 또는 자식에 명시 전달).
+
+**reduce(모션 최소화) 가드 — 근원 한 곳에서**: 잎 카드마다 끄지 말고 **variants 정의에서** 분기한다.
+```tsx
+const listVariants: Variants = {
+  hidden: {},
+  show: { transition: reduce ? {} : { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+const itemVariants: Variants = reduce
+  ? { hidden: { opacity: 1 }, show: { opacity: 1 } }   // 이동·페이드 없이 바로
+  : { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } };
+```
+
+> **TS 함정**: variants를 **별도 const 객체**로 빼면 `ease: 'easeOut'`가 `string`으로 넓게 추론돼 framer `Easing` 타입과 안 맞는다. `const x: Variants = …`로 **타입을 명시**하면 문맥 타입이 걸려 리터럴로 좁혀진다(prop에 인라인으로 주면 prop 문맥 타입이 걸려 괜찮음). 상세 → `TYPESCRIPT_GUIDE.md` §3.12.
 
 ---
 

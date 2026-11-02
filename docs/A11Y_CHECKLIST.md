@@ -43,7 +43,20 @@
 **새로 추가할 때**
 - 아이콘만 있는 링크/버튼이면 반드시 `aria-label`.
 - 아이콘 옆에 텍스트가 있으면 그 텍스트가 이름이 되므로 중복 `aria-label`은 넣지 않는다.
-- 장식용 아이콘 SVG는 `aria-hidden="true"`(react-icons는 부모가 이름을 가지면 아이콘을 감추는 게 자연스럽다).
+- **장식용 아이콘은 `aria-hidden`을 직접 넣는다.** ⚠️ **react-icons는 기본으로 `aria-hidden`/`role`을 안 붙인다** — `node_modules/react-icons/lib/iconBase.mjs`가 그냥 `<svg fill/stroke="currentColor">`만 렌더한다(확인함). 안 넣으면 스크린리더가 아이콘을 읽을 수 있으니 **명시적으로** 넘겨야 한다. (색은 `currentColor`라 부모 `text-*` 토큰 상속 — 아이콘 색 하드코딩 금지.)
+
+```tsx
+// 장식 (옆에 보이는 텍스트 라벨 있음) → 아이콘은 숨김
+<span className="…아이콘 칩…"><FiCode aria-hidden /></span>
+
+// 아이콘 전용 버튼 → 이름은 '버튼'에, 아이콘은 숨김
+<button aria-label="메뉴 닫기"><FiX aria-hidden /></button>
+
+// 의미 있는 단독 아이콘 (텍스트 라벨 없음) → 이름을 '아이콘'에
+<FiAlertTriangle role="img" aria-label="경고" />
+```
+
+- 정리: **`<i>`는 아이콘용 아님**(HTML5에서 "결이 다른 텍스트"로 재정의). 래퍼가 필요하면 제네릭 **`<span>`**, 아이콘 자체는 인라인 SVG. 핵심은 태그가 아니라 **역할별 ARIA**(장식=`aria-hidden` / 아이콘 전용 버튼=버튼에 `aria-label` / 의미 단독=SVG에 `role="img"`+`aria-label`). 왜/역사·스펙 상세 → `DEV_QNA.md` Q18.
 
 ## 3. 키보드 포커스 표시 (focus-visible)
 
@@ -98,6 +111,10 @@ h3  ProjectCard   프로젝트 제목
 건너뜀 없이 논리적. `<main>`은 `layout.tsx`에 하나, 각 섹션은 `<section id>`.
 
 **새로 추가할 때**: 시각적 크기는 `text-*` 토큰으로 조절하고, **의미 계층은 태그(h2/h3)로** 표현한다(크기 때문에 계층을 건너뛰지 말 것).
+
+**섹션마다 `h1` 리셋 금지**: `<section>`/`<article>` 안에서 `<h1>`을 다시 시작해도 브라우저·스크린리더가 레벨을 **자동으로 안 낮춘다**(그렇게 해주던 옛 "아웃라인 알고리즘"은 어디에도 구현된 적 없이 2022년 스펙에서 제거). **눈에 보이는 계층 그대로 명시적 h1–h6**를 쓴다.
+
+**리스트 안 heading은 유효**: `<li>`는 flow 콘텐츠라 `<h3>` 같은 heading을 담아도 표준상 문제없다(블로그/카드 인덱스가 대표 예). 아코디언 카드는 `<h3><button>`(heading이 button을 감싼다 — 반대로 하면 button이 heading 시맨틱을 삼킴). 왜/시맨틱 뉘앙스·아웃라인 알고리즘 상세 → `DEV_QNA.md` Q17.
 
 ## 6. 상태 있는 위젯 (햄버거 메뉴)
 

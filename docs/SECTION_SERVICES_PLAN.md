@@ -39,20 +39,24 @@
 
 > 실제 서비스가 아니라 **연습용 플레이스홀더**임을 코드 주석/문서로 명시.
 
+> **디자인 시안(Figma)**: 파일 `u9H8cKVsaR9WS9pgtXBlb3` — `services`(데스크탑, node **`152:2`**) / `services-mobile`(node **`157:2`**), journey-mobile 오른쪽에 배치. 디자인 시스템 동일(bg `#0A0A0A`, accent `#6366F1`, Geist / Geist Mono). 시안 반영 결정: **카드 4개**, 데스크탑 **2×2 그리드** / 모바일 **1열 스택**, disclosure는 **`+`(접힘)·`−`(펼침)**, 펼친 카드는 **accent 보더 + 상세 문단 + 불릿**(= 제자리 확장 · [구현] 다중 열기, §3.1·§8-3/4). 아이콘은 accent 칩 자리표시(구현 시 react-icons). 구현 시 좌표·크기는 `get_metadata`로 이 프레임 참조.
+
 ---
 
 ## 3. 인터랙션 = 핸드오프 모션 스펙 (framer-motion)
 
 1. **카드 펼치기 (핵심·새 기술)**
-   - 카드를 클릭하면 **상세가 확장**된다. **한 번에 하나만**(아코디언식) — 다른 카드가 열려 있으면 닫힌다(§8에서 다중 허용 여부 결정).
-   - `AnimatePresence`로 상세 블록의 **등장/퇴장**을, **`layout`**으로 카드 크기·이웃 재배치를 **부드럽게**.
-   - **열림 상태(어느 카드가 열렸나)** 를 state로 관리. 카드 컴포넌트가 그 상태를 받아 상세를 조건부 렌더.
+   - 카드를 클릭하면 **상세가 확장**된다. **[구현] 다중 열기** — 여러 카드를 동시에 펼칠 수 있고, 헤더의 "모두 펼치기/접기" 버튼으로 일괄 토글(§8-4).
+   - **[구현]** `AnimatePresence`로 상세 블록을 **높이 `0 ↔ auto` 애니메이션**(+ `overflow-hidden`으로 클립, `0.25s easeOut`)으로 펼침/접힘. `reduce`(모션 최소화)면 **즉시**(duration 0). `layout` prop은 미사용 — 상세가 unmount되며 이웃은 일반 흐름으로 재배치됨.
+   - **열림 상태**는 `openSet`(§8-4)으로 관리하고, `openSet.has(index) && <motion.div>`로 **조건부 렌더**(닫히면 unmount → exit 애니 후 제거). 패턴 상세 → `FRAMER_MOTION_GUIDE.md` §4.4.
 2. **hover / tap 마이크로 인터랙션 (새 기술)**
-   - `whileHover`: 살짝 떠오름(`y`) 또는 보더 accent. `whileTap`: 살짝 눌림(`scale`).
-   - 데스크탑은 hover가 주, 터치는 사실상 tap.
-3. **카드 등장 스태거 오케스트레이션 (덤·연습)**
+   - **[구현]** 카드 `<li>`를 `motion.li`로 만들고 `whileHover={reduce ? undefined : { y: -2 }}` — 호버 시 **살짝 떠오름**. 보더 accent는 framer가 아니라 **Tailwind `transition-colors hover:border-accent`**로 처리(색 전환은 '모션'이 아니라 상태 변화라 reduced-motion에서도 켜둬도 무방 → framer `y`만 reduce 가드).
+   - 데스크탑은 hover가 주. `whileTap`은 미사용 — 클릭의 피드백은 카드가 **펼쳐지는 것** 자체라 중복이고, 펼침과 scale이 동시에 튀면 산만해서 뺐다.
+3. **카드 등장 스태거 오케스트레이션 (덤·연습) — [구현]**
    - 섹션이 뷰에 들어오면 카드들이 **순차로** 등장. 개별 카드에 `whileInView`를 각각 거는 대신, **부모 컨테이너 variants**가 **`staggerChildren`**(자식 간 간격)·**`delayChildren`**(시작 지연)으로 **등장을 지휘**한다.
-   - 리스트·메뉴 등장에 두루 쓰는 정식 오케스트레이션 패턴. `viewport={{ once: true }}`로 1회.
+   - **[구현]** `<ul>`을 `motion.ul`로 바꿔 `variants={listVariants}` + `initial="hidden" whileInView="show" viewport={{ once: true }}`. 각 카드 `motion.li`엔 `variants={itemVariants}`만 주면 부모의 `show` 라벨이 **자식으로 전파**돼 스태거 간격(0.08s)대로 순차 재생. 카드 상세의 `motion.div`는 라벨이 아닌 `initial`/`animate` **객체**를 직접 쓰므로 부모 variants 전파에서 **격리**된다(펼침 애니와 등장 애니가 안 섞임).
+   - **reduce 가드**: `listVariants.show.transition`을 `reduce ? {} : {staggerChildren…}`로, `itemVariants`는 `reduce`면 `{opacity:1}` 고정(이동/페이드 없음) → 모션 최소화 시 바로 표시. (잎마다 가드하지 않고 **variants 정의 한 곳에서** 분기 = 근원 가드.)
+   - 리스트·메뉴 등장에 두루 쓰는 정식 오케스트레이션 패턴. 상세 → `FRAMER_MOTION_GUIDE.md` §4.8.
 4. **밀도 주의**: 펼침·hover·스태거가 동시에 튀지 않게 절제. 각 인터랙션마다 reduced-motion 정지 상태 설계(아래).
 
 ### 접근성 (인터랙티브라 필수 — 이 섹션의 핵심 연습)
@@ -111,7 +115,11 @@
 1. **콘텐츠**: Services(카드형) 유지 vs FAQ(문답형)로 교체 — 인터랙션 구조는 동일.
 2. **카드 수·문구**, 그리드 **열 수**(2 vs 3 vs 4).
 3. **펼침 확장 방식**: 제자리 확장 / 행 전체폭 확장 / **모달**(→ §5·`CSS_ADVANCED.md` §4). 모달이면 `layoutId` 공유 요소 morph도 선택지(고급).
-4. **한 번에 하나 vs 다중 열기**.
+4. **한 번에 하나 vs 다중 열기** — **[결정·구현됨] 다중 열기** 채택. 2×2 그리드에서 한 칸만 열면 비대칭이라, 여러 개를 열어 균형을 맞추게 함. 구현:
+   - 상태 `openSet`(`Set<number>`) — 열린 카드 index들의 집합.
+   - 카드 토글: **참조 변경 감지**를 위해 `new Set(prev)`로 복사 후 `add`/`delete`(그냥 mutate하면 리렌더 안 됨). → `TYPESCRIPT_GUIDE.md` §3.11.
+   - 카드 `aria-expanded`·`+/−`·상세 `hidden`은 전부 `openSet.has(index)`로 연동.
+   - **헤더 우측 "모두 펼치기/접기" 토글 버튼**: `openSet.size === 카드수`면 "모두 접기"(빈 Set), 아니면 "모두 펼치기"(전체 index Set). **`hidden md:block`으로 데스크탑만**(모바일은 세로라 비대칭 없고 스크롤만 늘어 제외).
 5. **hover 세부**: lift 정도, `whileTap` 유무, 터치 대체.
 6. **카드 등장 스태거**: 적용 여부, `staggerChildren` 간격·`delayChildren` 지연 값, 트리거(`whileInView` once).
 7. **네비 라벨**, 배치(Skills 뒤 확정?).

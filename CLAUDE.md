@@ -19,7 +19,7 @@ Claude Code가 세션 시작 시 자동으로 읽는 파일. 규칙과 영구 �
 ## 개요
 - **목적: AI 도구(Claude Code + Figma MCP + Claude 앱) 활용 개발을 연습·공부하는 프로젝트.** 저장소명 `ai-dev-practice`.
 - 만드는 페이지는 "개발자 포트폴리오 1페이지 랜딩"이지만, 실제 포트폴리오 용도가 아니라 **AI 개발 연습의 소재**다.
-- 섹션 순서(현재): Hero → Approach → Journey → Projects → Skills → CTA(연락처). *직접 손코딩으로 Approach·Journey 추가됨. Services는 기획 완료·구현 대기 → 목표 순서: Hero → Approach → Journey → Projects → Skills → Services → CTA.* 스타일: 다크 모던 / 미니멀, 인터랙션 포함.
+- 섹션 순서(현재): Hero → Approach → Journey → Projects → Skills → Services → CTA(연락처). *직접 손코딩으로 Approach·Journey·Services 추가됨(Services = 다중 열기 아코디언 + 펼침/hover/스태거 인터랙션).* 스타일: 다크 모던 / 미니멀, 인터랙션 포함.
 - 브랜드명 `DEV STUDIO`, 도메인/이메일 `example.dev`는 **플레이스홀더**(실명·실주소 아님).
 - 계획/대화는 Claude 앱, 코드 작성은 Claude Code, 디자인은 Figma(MCP 연결).
 
@@ -43,7 +43,7 @@ Claude Code가 세션 시작 시 자동으로 읽는 파일. 규칙과 영구 �
 ## 규칙 / 컨벤션
 - 컴포넌트 경로:
   - 레이아웃: `src/components/layout/` (Header, Footer)
-  - 섹션: `src/components/sections/` (Hero, Approach, Journey, Projects, Skills, CTA)
+  - 섹션: `src/components/sections/` (Hero, Approach, Journey, Projects, Skills, Services, CTA)
 - 색상·폰트·spacing·radius 등 디자인 토큰은 `src/app/globals.css`의 `@theme` 블록에 정의하고,
   컴포넌트에서는 토큰만 사용한다. **색상값 하드코딩 금지.**
 - `"use client"`는 인터랙션이 필요한 컴포넌트에만 붙인다. 정적 컴포넌트에는 생략.

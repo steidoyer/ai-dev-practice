@@ -1376,3 +1376,211 @@ const circles = [
 - `eslint-plugin-react-hooks`(Next 기본 포함)가 반복/조건/중첩 안 호출을 잡아준다.
 
 > 출처: [React — Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks), [React — eslint-plugin-react-hooks](https://react.dev/reference/eslint-plugin-react-hooks)
+
+---
+
+## Q16. hover·스태거 같은 모션 값은 디자인 시안 없이 정해도 되나? (정지 시안 vs 모션 스펙)
+
+> Services Figma 시안엔 레이아웃·색만 있고 hover 부상·duration·스태거 간격은 없다 — 이거 시안 없이 개발자가 정해도 되나, 하는 데서 나온 질문.
+
+### 핵심 — "시안 없이"는 흔하지만 "스펙 없이"는 아니다
+정지 시안(Figma 프레임)과 모션 스펙은 **역할이 다르다.** 정지 시안은 **resting states**(레이아웃·간격·색·타이포)를 잡고, hover 부상·duration·easing·스태거는 **시간·움직임**이라 정지 프레임에 표현이 안 된다. 그래서 이 값들은 대개 **다른 곳**에서 정해진다.
+
+### 현업에서 갈리는 방식
+- **디자인 시스템 성숙한 팀**: **모션 토큰/가이드라인**(표준 duration 150/200/300ms, 표준 easing, "hover는 y -2~-4 + 200ms" 같은 규칙). 개별 hover/스태거를 매번 시안으로 안 그리고 **시스템을 적용**한다 → "시안 없이"의 정체는 없음이 아니라 **시스템 레벨 스펙**이다.
+- **모션이 핵심인 제품**(브랜드·마케팅 사이트): 중요한 연출은 **프로토타입(Figma Smart Animate)·After Effects·Framer·영상 레퍼런스**로 정성껏 스펙한다. Hero는 스토리보드까지.
+- **작은 팀·마이크로 인터랙션**: 개발자가 **관례로 판단**하고 **리뷰에서 디자이너와 조율**한다("더 빠르게", "바운스 줄여").
+
+### 분업 원칙
+- **정지 시안에 담기는 것**: 레이아웃·색·타이포 + **색이 바뀌는 상태**(hover 시 보더/배경 색은 디자인 토큰으로 스펙되기도).
+- **개발자가 관례 안에서 정하는 것**: 정확한 duration·easing·스태거 간격·작은 transform. **브라우저에서 움직여 봐야** 제대로 판단되고, 숫자라 라이브로 고치기 싸다 → "정지 시안 → 구현 → 움직이는 결과를 디자이너가 리뷰"가 흔한 흐름.
+
+### 이 프로젝트
+정지 Figma 시안 = resting states이고, hover/스태거는 개발자가 정하는 게 정상 분업이다. 게다가 이미 **사실상의 모션 관례**가 쌓여 있어(Journey hover `y -2`+200ms, 시간 재생 1.8s easeOut, Approach 스태거 0.1/0.05) 그걸 재사용하면 사이트가 일관된다 = **미니 모션 시스템**. 구체 값은 `FRAMER_MOTION_GUIDE.md` §4.7.
+
+> 관련: `FRAMER_MOTION_GUIDE.md` §4.7(모션 관례·값)·§5.3(reduced-motion), `SECTION_SERVICES_PLAN.md`(정지 시안).
+
+---
+
+## Q17. 리스트 안에 heading을 넣어도 되나? — HTML5 아웃라인 알고리즘과 "섹션마다 h1 리셋"이 죽은 이야기
+
+> Services 카드를 `<ul><li>`로 짜면서 "리스트 안에 제목(`<h3>`)이 들어가는 게 시맨틱상 이상하지 않나?"에서 나온 질문. 확인 결과 **유효하다.** 다만 그 찜찜함엔 근거가 있고, 그 근거는 지금 대부분 폐기됐다.
+
+### 1. 스펙상 유효한가 — 그렇다
+`<li>`의 콘텐츠 모델은 **flow content**이고 heading(h1–h6)은 flow content다 → `<li>` 안 heading은 **WHATWG HTML 스펙상 conforming**(밸리데이터 통과). 블로그/아티클 인덱스(`<ul>`의 각 `<li>`에 글 제목 heading)가 대표적 관용 패턴이다.
+
+### 2. 찜찜함의 근거 — heading = "섹션 시작"
+heading은 "여기서 새 콘텐츠 단위가 시작된다"를 함축하고, 리스트는 "평평한 나열"이다. 그래서 "리스트 안 heading"은 의미가 겹친다 — 스펙 해설도 *"conforming이나 의도한 시맨틱과 다를 수 있다(heading이 리스트를 여러 섹션으로 쪼개는 꼴)"*고 짚는다.
+
+### 3. 그 "쪼갠다"는 개념 = HTML5 아웃라인 알고리즘 (폐기됨)
+저 논리는 **아웃라인 알고리즘**에서 나왔다: `<section>`/`<article>` 중첩으로 heading 레벨을 **자동 계산**하고, 그래서 **섹션마다 `<h1>`을 다시 써도** 알고리즘이 실제 레벨(h2, h3…)로 쳐준다는 것.
+- **문제**: 어떤 브라우저·스크린리더도 구현한 적이 없다 → 중첩 `<section>` 안 `<h1>`은 여전히 **그냥 h1**으로 노출돼 h1이 여러 개가 됨(탐색 악화).
+- **2022년 스펙에서 제거**(whatwg/html PR #7829). 지금은 heading을 **명시적 랭크(h1–h6)로만** 해석한다.
+- **CSS 잔재**도 정리 중: 중첩 `<section>` 안 `<h1>`의 기본 font-size 자동 축소도 폐기 방향(DevTools deprecation 경고) — MDN "Default styles for h1 elements are changing".
+
+### 4. 결론 (실무)
+- **눈에 보이는 계층 그대로 h1–h6**를 쓴다. **섹션마다 h1 리셋 금지.**
+- **리스트 안 heading은 OK** — 실제 "쪼개짐"은 안 일어나고(알고리즘이 죽었으니), AT는 리스트(항목 수)와 heading(제목 이동)을 **둘 다** 노출한다. "이게 셀 수 있는 목록으로 읽히는 게 맞나"만 판단해 리스트 여부를 고른다.
+- 아코디언은 `<h3><button>`(heading이 button을 감쌈).
+
+> 규칙 요약 → `A11Y_CHECKLIST.md` §5(헤딩 계층). 출처: [WHATWG HTML — grouping content(li=flow)](https://html.spec.whatwg.org/multipage/grouping-content.html), [whatwg/html PR #7829(아웃라인 제거)](https://github.com/whatwg/html/pull/7829), [MDN — Default styles for h1 elements are changing](https://developer.mozilla.org/en-US/blog/h1-element-styles/), [Adrian Roselli — There Is No Document Outline Algorithm](https://adrianroselli.com/2016/08/there-is-no-document-outline-algorithm.html).
+
+---
+
+## Q18. 아이콘은 무슨 태그로 감싸나? — `<i>`의 역사와 인라인 SVG·ARIA 기준
+
+> Services 카드 아이콘을 짜면서 "래퍼를 `<i>`? `<span>`? 지금 기준은?"에서 나온 질문. 결론: **`<i>`는 버리고, 래퍼가 필요하면 `<span>`, 진짜 핵심은 태그가 아니라 "역할별 ARIA".**
+
+### 1. `<i>`의 역사 — 아이콘용이 아니다
+- HTML5에서 `<i>`는 **"본문과 결이 다른 텍스트 범위"**(전문 용어·학명·외국어구·생각·배 이름 등)로 재정의됐다. 순수 기울임은 CSS(`font-style`)로.
+- 그런데 **아이콘 폰트 시대**(Font Awesome·Bootstrap, ~2011–2015)에 "짧고 빈 태그"가 필요해 `<i class="fa fa-user">` 관행이 굳었다 → **시맨틱 오용**(아이콘은 "결이 다른 텍스트"가 아니다).
+
+### 2. `<span>`이 더 낫다 (그래도 핵심은 아님)
+`<span>`은 **"아무 의미 없는 제네릭 인라인 컨테이너"**라 `<i>`보다 안전하다. 다만 엄밀히는 `<span>`도 텍스트용 컨테이너이고, **아이콘 자체는 이미 요소(SVG)**라 **래퍼 없이 SVG만** 둬도 된다.
+
+### 3. 현재 표준 — 인라인 SVG + 역할별 ARIA
+아이콘 폰트는 접근성·렌더링·성능 문제로 **인라인 SVG로 대체**됐다(react-icons가 이 방식). 정답은 `<i>`냐 `<span>`이냐가 아니라 **아이콘의 역할**이다:
+
+| 역할 | 마크업 |
+|---|---|
+| **장식**(옆에 보이는 텍스트 라벨 있음) | `<svg aria-hidden="true">` — AT에서 숨김 (`focusable="false"`는 옛 IE/Edge용, 지금 불필요) |
+| **아이콘 전용 버튼**(텍스트 없음) | 버튼에 `aria-label` + `<svg aria-hidden="true">` |
+| **의미 있는 단독 아이콘** | `<svg role="img" aria-label="...">`(또는 `<title>`) |
+
+래퍼가 필요하면(칩·정렬·배경) 제네릭 `<span>`.
+
+### 4. react-icons(이 프로젝트) 실제 동작
+`node_modules/react-icons/lib/iconBase.mjs`는 `<svg fill/stroke="currentColor" …전달 props…>`만 렌더한다 → **기본으로 `aria-hidden`/`role`을 안 붙인다.** 그래서:
+- **장식 아이콘도 직접 `aria-hidden`을 넘겨야** 스크린리더가 안 읽는다: `<FiCode aria-hidden />`.
+- 의미 있는 아이콘이면 `title="..."`(→ `<title>` 생성) 또는 `role="img"`+`aria-label`.
+- 색은 `currentColor`라 부모 `text-*` 상속.
+
+### 결론
+- **`<i>` ❌ / 래퍼는 `<span>` / 핵심은 역할별 ARIA**(장식=`aria-hidden`, 아이콘 버튼=버튼 `aria-label`, 의미 단독=SVG `role="img"`+`aria-label`).
+- react-icons는 기본으로 안 숨기니 **장식엔 `aria-hidden` 직접**.
+
+> 규칙·예시 코드 → `A11Y_CHECKLIST.md` §2(아이콘 전용 링크/버튼). 출처: [CSS-Tricks — Accessible SVGs](https://css-tricks.com/accessible-svgs/), [Sara Soueidan — Accessible Icon Buttons](https://www.sarasoueidan.com/blog/accessible-icon-buttons/), [MDN — aria-label](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-label), [CSS-Tricks — Icon Fonts vs SVG](https://css-tricks.com/icon-fonts-vs-svg/), [Font Awesome — Accessibility](https://fontawesome.com/docs/web/dig-deeper/accessibility).
+
+---
+
+## Q19. CSS Grid, 지금 써도 되나? — 지원 역사·Baseline·flex와의 분업
+
+> "예전엔 grid 지원이 좁아서 안 썼는데 지금은 괜찮나?"에서 나온 질문. 결론: **지금은 안전하다. 특히 이 프로젝트 스택에선 피할 이유가 없다.**
+
+### 1. 예전 망설임엔 근거가 있었다
+- ~2016 이전엔 모던 문법 grid가 브라우저에 정식 탑재 전이라 실제로 지원이 좁았다.
+- 진짜 고통은 **IE11·구 Edge의 옛 2011 스펙(`-ms-grid`)** — `gap` 없음, 자동 배치(auto-placement) 없음, 문법도 다름. "grid 쓰면 IE에서 깨진다"가 여기서 나온다.
+
+### 2. 그 걱정은 끝났다
+- **2017년 전 major 브라우저 정식 출시**(Chrome 57·Firefox 52·Safari 10.1 3월, Edge 16 10월 = "모든 major 브라우저 채택"의 날).
+- **IE11 2022년 6월 EOL** → 옛 `-ms-grid` 걱정의 유일한 대상이 수명 종료.
+- **Baseline "Widely available"**(2019경부터), caniuse 전역 **~97%+**. **subgrid**도 이제 전 브라우저(Safari 16·Chrome 117).
+
+### 3. 이 프로젝트는 특히 무관
+**Tailwind v4 자체가 훨씬 높은 브라우저 하한**(대략 Safari 16.4+ / Chrome 111+ / Firefox 128+, 2023+)을 요구한다. grid(2017)는 그보다 훨씬 오래돼 넓게 지원되므로, **grid를 피하려 flex+`calc` 매직넘버를 쓰는 건 실익이 없다**(이미 문이 잠긴 방을 피해 창문으로 도는 격).
+
+### 4. 장단점 / flex와의 분업
+- **장점**: 2D(행+열), **선언적 열**(너비 계산 불필요), `repeat(auto-fit,minmax())` 반응형, `gap`.
+- **단점/우려**: IE11 옛 문법(EOL이라 무관), 학습곡선, 단순 1D엔 과함.
+- **grid vs flex = 상호보완**: 레이아웃(구조·2D)=grid, 정렬(1D·흐름)=flex. 카드 배치는 grid, 카드 안 정렬은 flex.
+
+### 결론
+지금 grid는 Baseline widely available이고 이 프로젝트 하한은 그보다 높다 → **문제없이 쓴다.** IE11 지원이 **명시적 요구일 때만** 재고(이 프로젝트는 아님).
+
+> 실무 패턴(2열·auto-fit·flex 분업) → `CSS_ADVANCED.md` §6. 출처: [caniuse — CSS Grid](https://caniuse.com/css-grid), [A List Apart — The Story of CSS Grid](https://alistapart.com/article/the-story-of-css-grid-from-its-creators/), [MDN — Grid와 다른 레이아웃의 관계](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Grid_layout/Relationship_with_other_layout_methods), [MDN Blog — Baseline evolution](https://developer.mozilla.org/en-US/blog/baseline-evolution-on-mdn), [zenn — CSS Subgrid in all browsers](https://zenn.dev/tonkotsuboy_com/articles/css-subgrid-all-browsers?locale=en).
+
+---
+
+## Q20. `setState`에 함수를 넘긴다는 것 — 함수형 업데이트와 setter의 지원 여부
+
+> 토글 코드 `setOpenIndex(prev => prev === index ? null : index)`의 `prev`가 뭔지에서 나온 질문.
+
+### setter의 두 가지 형태
+`useState`의 set 함수는 **값**을 받을 수도, **함수**를 받을 수도 있다.
+```jsx
+setOpenIndex(3)                    // ① 값 직접 — openIndex를 3으로
+setOpenIndex(prev => prev + 1)     // ② 함수형 업데이트 — 현재 값을 받아 새 값을 return
+```
+②처럼 함수를 넘기면, React가 그 함수에 **현재 state 값**을 인자로 넣어 호출하고 **return한 값**을 새 state로 삼는다. `prev`는 그 인자 이름일 뿐(= 현재 `openIndex`)이며, 이름은 자유다(`prev`·`p`·`prevState` 등 관용).
+
+### 왜 함수형 업데이트를 쓰나 — 직전 값에 기반할 때 안전
+클로저에 갇힌 옛 state를 읽는 문제(stale)를 피한다. 특히 **한 이벤트에서 연속으로 여러 번** 갱신할 때 차이가 드러난다.
+```jsx
+// count가 0일 때
+setCount(count + 1)
+setCount(count + 1)          // 둘 다 클로저의 count(0)를 기준 → 결국 1 (+1만)
+
+setCount(prev => prev + 1)
+setCount(prev => prev + 1)   // 각자 직전 결과를 받음 → 2 (+2)
+```
+그래서 "이전 값에 기반해 바꾸는" 업데이트는 함수형이 정석이다. (토글처럼 클릭당 한 번이면 `openIndex`를 직접 읽어도 동작은 한다.)
+
+### 참고 — 직접 읽기 vs `prev =>`, 둘 다 된다
+토글 핸들러를 `if (openIndex === index) …`처럼 **`openIndex`를 직접 읽는** 식으로 짜도, **클릭당 1회 갱신**이면 잘 동작한다. `setOpenIndex(prev => …)`는 그와 **동등한 대안**일 뿐 — 둘 중 아무거나 써도 된다. 다만 **직전 값 기반 갱신이 복잡해지거나 한 이벤트에서 연속으로 여러 번** 일어나면 `prev =>` 형태가 더 안전하다(위 stale 문제). 즉 "지금 코드 그대로 둬도 되고, 안전하게 가려면 함수형"이라는 **선택의 문제**지 "직접 읽기가 틀렸다"는 게 아니다.
+
+### 함수도 "값"이다 → setter가 지원해야 풀린다
+JS에서 함수는 **일급 객체(일급 값)**라, `prev => …`도 하나의 "함수라는 값"이다. setter가 이 값을 어떻게 다루느냐로 갈린다.
+- **지원(useState)**: "인자가 함수면 **실행해서 그 결과를 state로**" → 정상.
+- **미지원**: 받은 걸 **그대로 저장** → **함수 객체가 값으로 박힌다.**
+```jsx
+latched.set(prev => prev + 1)
+latched.get()   // (prev) => prev + 1  ← 숫자가 아니라 '함수'가 들어있음 ❌
+```
+컨테이너에 계산 결과가 아니라 함수 자체가 저장돼, 이후 그 값을 숫자로 쓰는 코드가 전부 깨진다.
+
+### 어디서 되고 안 되나
+| 함수형 업데이트 지원 | 미지원(값만 받음) |
+|---|---|
+| `useState`의 set 함수, 클래스 `this.setState`, 일부 상태 라이브러리(예: Zustand `set`) | `useRef`(직접 대입 `ref.current = x`), framer `MotionValue.set()`(→ `.get()`으로 읽고 `.set()`) |
+
+핵심: **setter가 "인자가 함수면 실행한다"고 구현돼 있을 때만** `prev => …`가 의미를 가진다. JS 보편 기능이 아니라 **API별 지원**이다.
+
+### 정리
+- **원리**: `setOpenIndex(fn)`(useState의 setter 함수)이 동작하는 건 그 setter가 내부적으로 "인자가 **함수**면 `fn(현재값)`을 실행"하도록 만들어져 있기 때문. 그렇게 설계 안 된 함수에 `prev => …`를 넘기면 **함수 객체가 값으로 박힌다**(업데이터로 안 풀림).
+- `prev => 새값` 형태 = **그 API가 함수형 업데이트를 지원할 때만**.
+- React 대표는 **`useState` setter**(와 클래스 `this.setState`).
+- **`useRef`·framer `MotionValue`는 직접 값**을 넣는다(함수형 없음).
+
+> 관련: `FRAMER_MOTION_GUIDE.md` §3.6(`useMotionValue`·`.set()`은 값만 받음).
+
+---
+
+## Q21. `map`에서 이벤트 핸들러에 고유 index를 넘기려면 — 화살표로 감싸기(클로저)
+
+> 아코디언 카드의 `onClick`에서 "이 카드의 index"를 어떻게 핸들러로 넘기나에서 나온 질문.
+
+### 방법: 인라인 화살표가 그 반복의 index를 캡처한다
+```jsx
+{cards.map((item, index) => (
+  <button onClick={() => onCardClick(index)}>…</button>
+))}
+```
+`map` 콜백은 카드마다 한 번씩 돌고, 각 반복이 만든 **화살표 함수가 자기 `index`를 클로저로 붙잡는다.** 그래서 버튼마다 자기 index를 안다.
+
+### 원리 — 클로저(closure)가 index를 어떻게 "기억"하나
+**클로저 = 함수 + 그 함수가 선언된 바깥 스코프의 변수들**이다. 함수는 자기가 만들어질 때 주변에 있던 변수를 **기억(참조)**하고, 그 스코프가 끝난 뒤(예: `map`이 다 돌고 나서, 클릭이 한참 뒤에 일어나도)에도 그 값을 읽을 수 있다.
+
+`map((item, index) => …)`에서 벌어지는 일:
+1. `map`은 콜백을 **항목마다 따로 호출**한다 → 매 호출이 **자기만의 `index`**(별개의 지역 변수)를 가진다.
+2. 그 호출 안에서 만든 `() => onCardClick(index)` 화살표는 **그 호출의 `index`를 클로저로 붙잡는다.**
+3. 항목이 4개면 **4번의 호출 → 서로 다른 `index` 4개 → 화살표 4개**가 각자 다른 값(0·1·2·3)을 기억한다.
+4. 나중에 버튼을 클릭하면 그 화살표가 실행되며 **자기가 붙잡아 둔 `index`**를 읽어 넘긴다.
+
+**핵심은 "매 반복이 새 `index` 바인딩을 가진다"**는 것 — 그래서 버튼 4개가 서로 다른 index를 안다.
+
+> **(옛 함정과 대비)** `for (var i = 0; …) { btn.onclick = () => i }`처럼 **`var`로 루프**를 돌리면 모든 클로저가 **같은 `i` 하나**를 공유해 전부 마지막 값을 읽는 유명한 버그가 있었다. `map` 콜백 파라미터(또는 `for...of` + `let`)는 **반복마다 바인딩이 새로** 생겨 이 문제가 없다 — "왜 index가 안 섞이나"의 답이 이것.
+
+### 함정 2가지
+1. **`onClick={onCardClick}` (화살표 없이 그대로 전달)** — 클릭하면 핸들러에 **이벤트 객체(`MouseEvent`)**가 넘어가고 `index`는 안 들어온다. TS에선 그 이벤트가 `index: number` 자리에 들어가 **타입 에러**로도 드러난다.
+2. **`onClick={onCardClick(index)}` (화살표 없이 호출)** — 이건 **렌더링 중에 즉시 실행**된다(클릭 시점이 아니라). 렌더마다 핸들러가 바로 불려 오작동한다. → 반드시 **`onClick={() => onCardClick(index)}`**처럼 "클릭하면 실행할 함수"로 감싼다.
+
+### 이벤트 객체도 함께 필요하면
+```jsx
+onClick={(e) => onCardClick(index, e)}
+```
+화살표가 이벤트를 받아 index와 같이 넘기면 된다.
+
+### (참고) 클로저 대신 DOM에서 읽기
+버튼에 `data-index={index}`를 주고 핸들러에서 `Number(e.currentTarget.dataset.index)`로 읽을 수도 있다. 다만 문자열이라 숫자 변환이 필요하고 덜 관용적 — **화살표+클로저가 정석**이다.
+
+> 관련: `DEV_QNA.md` Q15(Rules of Hooks — `map` 안에서의 훅 호출은 별개 주제).

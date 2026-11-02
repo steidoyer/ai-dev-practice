@@ -9,6 +9,7 @@
 3. [position — 5가지 값, containing block, sticky가 안 먹는 이유](#3-position--5가지-값-containing-block-sticky가-안-먹는-이유)
 4. [스크롤 잠금 (scroll lock) — dim 오버레이 / 모달 패턴](#4-스크롤-잠금-scroll-lock--dim-오버레이--모달-패턴)
 5. [글자 색 와이프 — `background-clip: text`로 하이라이트 쓸기](#5-글자-색-와이프--background-clip-text로-하이라이트-쓸기)
+6. [CSS Grid — flex와의 분업·하드코딩 없는 그리드](#6-css-grid--flex와의-분업하드코딩-없는-그리드)
 
 > 앞으로 추가 후보: `clip-path`, scroll-driven animations(`animation-timeline`), CSS 변수·`@property`, container queries 등. 필요할 때 섹션으로 붙인다.
 
@@ -689,3 +690,33 @@ color: color-mix(in srgb,
 - **스크롤 거리/sticky**: `SCROLL_MERGE_GUIDE.md`
 - **latched(되감김 없음) 배경·A/B**: `STICKY_SESSION_NOTE.md` "A vs B(스크롤 되감김)" 절
 - **접근성(색만으로 의미 전달 금지 등)**: `A11Y_CHECKLIST.md`
+
+---
+
+## 6. CSS Grid — flex와의 분업·하드코딩 없는 그리드
+
+### 6.1 언제 grid, 언제 flex
+- **Grid = 2D(행+열 동시)** — 카드 그리드·페이지 레이아웃 등 "구조". 열 수를 **선언**한다(`grid-cols-2`).
+- **Flexbox = 1D(한 방향 흐름·정렬)** — 한 줄 정렬·간격, 콘텐츠 흐름.
+- **경쟁이 아니라 상호보완**: 배치(구조)는 grid, 그 안 아이템 정렬은 flex. (MDN "grid와 다른 레이아웃의 관계".)
+
+### 6.2 하드코딩 없는 2열 그리드 (이 프로젝트 Services 카드)
+```
+grid grid-cols-1 md:grid-cols-2 gap-4
+```
+- `grid-cols-2` = 열 2개(`1fr 1fr`) 선언 → 한 줄에 2개, **너비를 직접 계산할 필요 없음**.
+- **3번째(홀수) 아이템**은 다음 줄 첫 칸에 **같은 너비(1fr)**로 놓이고 **끝까지 안 늘어난다.**
+- `gap-4`(1rem) = 가로·세로 간격, 매직넘버 없음.
+- 대비 — flex-wrap으로 같은 걸 하면 각 아이템 `basis-[calc(50%-0.5rem)]` + `grow-0`처럼 **매직넘버(gap 절반 손계산)**가 낀다. 그래서 "N열 그리드"는 grid가 정답.
+
+### 6.3 미디어쿼리 없는 반응형 그리드 (참고)
+```
+grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-4
+```
+- 컨테이너 폭에 맞춰 **열 개수가 자동**으로 늘고 준다(각 열 최소 16rem, 남으면 늘림). 미디어쿼리 불필요.
+- `auto-fit`(빈 트랙 접음) vs `auto-fill`(빈 트랙 유지) 차이만 유의.
+
+### 6.4 지원 현황 (지금 써도 되나)
+- CSS Grid는 **Baseline "Widely available"**(2017 전 브라우저 출시, IE11은 2022 EOL). subgrid도 이제 전 브라우저.
+- 이 프로젝트는 **Tailwind v4가 요구하는 브라우저 하한(대략 2023+)**이 grid(2017)보다 훨씬 높아 **지원 걱정이 구조적으로 없다.**
+- 지원 역사·장단점·flex 분업 상세 → `DEV_QNA.md` Q19.
