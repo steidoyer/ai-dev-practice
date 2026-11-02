@@ -4,6 +4,7 @@ import Skills from "@/components/sections/Skills";
 import CTA from "@/components/sections/CTA";
 import Approach from "@/components/sections/Approach";
 import Journey from "@/components/sections/Journey";
+import Services from "@/components/sections/Services";
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
       <Journey />
       <Projects />
       <Skills />
+      <Services />
       <CTA />
     </>
   );

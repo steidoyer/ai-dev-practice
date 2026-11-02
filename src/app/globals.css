@@ -14,6 +14,7 @@
   --color-muted:         #808080;                  /* text-muted      footer/hints (AA 4.5+ on #0a0a0a) */
   --color-accent:        #6366f1;                  /* bg/text/border-accent           */
   --color-accent-subtle: rgba(99, 102, 241, 0.1);  /* bg-accent-subtle badge bg      */
+  --color-icon-border: rgba(99, 102, 241, 0.35);
 
   /* Font Families — generates font-* utilities */
   --font-heading: 'Geist', sans-serif;
